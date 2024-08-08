@@ -3,29 +3,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import copy
+from scipy.optimize import fmin
 abspath="/home/henryll/Documents/Experimental_data/Nat/m4D2/"
 #abspath="/home/userfs/h/hll537/Documents/Experimental_data/m4D2"
 dataloc="m4D2_Data"
 Blankloc="Blank"
 experiments=["FTACV", "PSV"]
-harmonic_range=list(range(0, 9))
-plot_options=dict(zip(experiments, [
-    {"hanning":True, "xaxis":"DC_potential", "plot_func":np.abs, "xlabel":"DC potential (V)", "ylabel":"Current ($\\mu$A)", "remove_xaxis":True,"filter_val":0.25},
-    {"hanning":False, "xaxis":"potential", "plot_func":np.real, "xlabel":"Potential (V)", "ylabel":"Current ($\\mu$A)", "remove_xaxis":True}
-]))
-harmonics=len(harmonic_range)
-for i in range(0, len(experiments)):
-    if experiments[i]=="FTACV":
-        grouping=["mV.txt","Hz"]
-        labels=["mV", "Hz"]
-        labeldict=dict(zip(grouping, labels))
-        rowcol=dict(zip(grouping, [2, 4]))
-    elif experiments[i]=="PSV":
-        grouping=["Hz", "osc.txt"]
-        labels=["Hz", "Oscillations"]
-        labeldict=dict(zip(grouping, labels))
-        rowcol=dict(zip(grouping, [4,1]))
 
+
+for i in range(1, len(experiments)):
+    if experiments[i]=="FTACV":
+        grouping=["mV.txt", "Hz"]
+        rows=2
+        cols=4
+        
+    elif experiments[i]=="PSV":
+        grouping=["osc.txt", "Hz"]
+        rows=2
+        cols=2
+    fig,axis=plt.subplots()
     directory="/".join([abspath, dataloc, experiments[i]])
     files=os.listdir(directory)
     file_dict={}
@@ -33,7 +29,7 @@ for i in range(0, len(experiments)):
         file_dict[files[j]]=np.loadtxt(directory+"/"+files[j])
     file_list=list(file_dict.keys())
 
-    for j in range(0, len(grouping)):
+    for j in range(0, 1):
         sortdict={}
         for m in range(0, len(file_list)):
             split=file_list[m].split("_")  
@@ -49,25 +45,20 @@ for i in range(0, len(experiments)):
         
         plot_keys=list(sortdict.keys())
         plot_keys=[str(x) for x in sorted([int(x) for x in plot_keys])]
-        fig,ax=plt.subplots()
+        print(plot_keys)
         for m in range(0, len(plot_keys)):
 
             pk=plot_keys[m]
             trace_keys=[str(x) for x in sorted([int(x) for x in sortdict[pk]])]
-            local_options=copy.deepcopy(plot_options[experiments[i]])
-            
-            for q in range(0, len(trace_keys)): 
+            print(trace_keys)
+            for q in range(0, 1): 
                 tk=trace_keys[q]
-                datakey=tk+" "+labeldict[grouping[j-1]]+"_data"
                 if experiments[i]=="FTACV":
                 
                 
                     time=sortdict[pk][tk][:,0]
                     current=sortdict[pk][tk][:,1]*1e6
                     potential=sortdict[pk][tk][:,2]
-                    local_options[datakey]={"time":time, "potential":potential, "current":current, }
-                    plt.plot(time, current)
-                    plt.show()
                 elif experiments[i]=="PSV":
                     time=sortdict[pk][tk][:,0]
                     current=sortdict[pk][tk][:,1]*1e6
@@ -78,21 +69,41 @@ for i in range(0, len(experiments)):
                     time=time[idx]
                     potential=potential[idx]
                     current=current[idx]
-                    local_options[datakey]={"time":time, "potential":potential, "current":current, "harmonics":list(range(3, 11))}
-               
-                
-                local_options["h_num"]=True
-                
+                if experiments[i]=="FTACV":
+                    rowdx=m
+                    lab=" mV data"
+                elif experiments[i]=="PSV":
+                    rowdx=q//cols
+                    lab=" oscillations data"
 
-            
-            local_options["legend"]={"loc":"upper right", "ncol":2, "bbox_to_anchor":[1, 2], "frameon":False}
-            axes=sci.plot.plot_harmonics(**local_options)
-            axes[0].set_title(pk+" "+labeldict[grouping[j]])
-            fig=plt.gcf()
-            fig.set_size_inches(7, 9)
-            plt.show()
-            fig.savefig("Initial_plots/{2}/Grouped_by_{0}{1}.png".format(pk, labeldict[grouping[j]], experiments[i]), dpi=500)
+
+                psv=sci.SingleExperiment("PSV", 
+                    {"Edc":-0.4,
+                    "omega": 2.9977532172948544,
+                    "delta_E": 0.38673,
+                    "area": 0.07,
+                    "Temp": 298,
+                    "N_elec": 1,
+                    "phase": 1.3392083140102466+np.pi,
+                    "Surface_coverage": 1e-10,
+                    "phase_phase":-0.6071400752265643,
+                    "phase_delta_E":-0.0002219653409706163,
+                    "phase_omega":9.186648592520847*2*np.pi,},
+                    phase_function="sinusoidal"
+                )
+                sim_inf=psv.get_voltage(time)
+               
+                axis.plot(time, potential-sim_inf, alpha=0.5, color=sci._utils.colours[2], label="residual")
+                axis.set_title(tk+" Hz")
+                axis.plot(time, potential, label=pk+lab)
+                axis.set_xlabel("Time (s)")
+                if q==0:
+                    axis.set_ylabel("Potential (V)")
+                axis.plot(time, sim_inf, linestyle="--", label="fitted")
                 
+        
+        plt.show()
+
            
 
     

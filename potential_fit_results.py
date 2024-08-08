@@ -11,7 +11,7 @@ Blankloc="Blank"
 experiments=["FTACV", "PSV"]
 
 
-for i in range(0, len(experiments)):
+for i in range(1, len(experiments)):
     if experiments[i]=="FTACV":
         grouping=["mV.txt", "Hz"]
         rows=2
@@ -21,7 +21,6 @@ for i in range(0, len(experiments)):
         grouping=["osc.txt", "Hz"]
         rows=2
         cols=2
-    
     directory="/".join([abspath, dataloc, experiments[i]])
     files=os.listdir(directory)
     file_dict={}
@@ -46,15 +45,14 @@ for i in range(0, len(experiments)):
         plot_keys=list(sortdict.keys())
         plot_keys=[str(x) for x in sorted([int(x) for x in plot_keys])]
         print(plot_keys)
-        
-        for m in range(1, len(plot_keys)):
+        for m in range(0, len(plot_keys)):
 
             pk=plot_keys[m]
             trace_keys=[str(x) for x in sorted([int(x) for x in sortdict[pk]])]
             print(trace_keys)
-            
             for q in range(0, len(trace_keys)): 
                 fig, axis=plt.subplots()
+
                 tk=trace_keys[q]
                 if experiments[i]=="FTACV":
                 
@@ -79,39 +77,56 @@ for i in range(0, len(experiments)):
                     rowdx=q//cols
                     lab=" oscillations data"
                 #axis=ax[rowdx, q%cols]
-
-               
+                #p_est, p_inf, sim_est, sim_inf=sci.infer.get_input_parameters(time, potential, current,experiments[i], optimise=True, return_sim_values=True)
+                p_est=sci.infer.get_input_parameters(time, potential, current,experiments[i], optimise=False)
+                amp=p_est["Edc"]
+                def var_phase_sine(params, return_error=True):
+                    
+                    
+                    omega=params[0]
+                    phase=params[1]
+                    phase_omega=params[2]
+                    phase_phase=params[3]
+                    phase_amp=params[4]
+                    edc=params[5]
+                    amp=params[6]
+                    interior_phase=phase_amp*np.sin(phase_omega*time+phase_phase)
+                    value=2*edc+(amp*np.sin((2*np.pi*omega*time)+phase+interior_phase))
+                    plain_sin=2*edc+(amp*np.sin((2*np.pi*omega*time)+phase))
+                    
+                    """
+                    fig, ax=plt.subplots(2,2)
+                    ax[0,0].plot(time, potential)
+                    ax[0,0].plot(time, value)
+                    
+                    ax[1,0].plot(value-potential)
+                    ax[0,1].plot(time, potential)
+                    ax[0,1].plot(time, plain_sin)
+                    
+                    ax[1,1].plot(potential-plain_sin)
+                    plt.show()"""
+                    if return_error==True:
+                        return sci._utils.RMSE(value, potential)
+                    else:
+                        return value
                 
-                p_est, p_inf, sim_est, sim_inf=sci.infer.get_input_parameters(time, potential, current,experiments[i], 
-                                                                                optimise=True, 
-                                                                                return_sim_values=True, 
-                                                                                sinusoidal_phase=True,
-                                                                                sigma=0.075,
-                                                                                runs=20
-                                                                                )
-                #p_est=sci.infer.get_input_parameters(time, potential, current,experiments[i], optimise=False)
-                print("['{0}']['{1}']['{2}']".format(experiments[i], pk, tk))
-                print(p_inf)
-                init=p_inf
-                init["Surface_coverage"]=1e-10
-                init["Temp"]=298
-                init["N_elec"]=1
-                init["area"]=0.07
-                twinx=axis.twinx()
-                axis.plot(potential)
-                axis.plot(sim_inf)
-                twinx.plot(potential-sim_inf)
-                plt.show()
+                minimisation=fmin(var_phase_sine,[p_est["omega"], p_est["phase"], 4, 0,1,p_est["Edc"],amp ])
+                print(list(minimisation))
+                axis.plot(time, var_phase_sine(minimisation, return_error=False))
                 
-                """axis.plot(time, potential-sim_inf, alpha=0.5, color=sci._utils.colours[2], label="residual")
+                #axis.plot(time, potential-sim_inf, alpha=0.5, color=sci._utils.colours[2], label="residual")
                 axis.set_title(tk+" Hz")
                 axis.plot(time, potential, label=pk+lab)
+                axis.plot(time, potential-var_phase_sine(minimisation, return_error=False)+p_est["Edc"])
                 axis.set_xlabel("Time (s)")
                 if q==0:
                     axis.set_ylabel("Potential (V)")
-                axis.plot(time, sim_inf, linestyle="--", label="fitted")"""
-                
-   
+                #axis.plot(time, sim_inf, linestyle="--", label="fitted")
+                plt.show()
+        """ax[0,0].legend()
+        if experiments[i]=="FTACV":
+            ax[1,0].legend()"""
+        plt.show()
 
            
 
