@@ -26,7 +26,7 @@ row_keys=["80","250","100"]
 fig, ax=plt.subplots(3, 4)
 
 
-for i in range(1, len(experiments)):
+for i in range(0, len(experiments)):
     if experiments[i]=="FTACV":
         grouping=["mV.txt", "Hz"]
         rows=2
@@ -127,21 +127,9 @@ for i in range(1, len(experiments)):
                     phase_function="constant"
 
                 )
-                sim_v_no_add_phase=np.array(voltage_simulator.get_voltage(time, dimensional=True))
-                #axis.plot(time[exclude_first_osc], sim_v_no_add_phase[exclude_first_osc]-potential[exclude_first_osc])
-                no_phase_analytic=init["Edc"]+init["delta_E"]*np.sin(2*np.pi*init["omega"]*time[exclude_first_osc]+init["phase"])
-                axis.plot(time[exclude_first_osc], potential)
-                axis.plot(time[exclude_first_osc], no_phase_analytic)
-                #axis.plot(time[exclude_first_osc], sim_v[exclude_first_osc]-potential[exclude_first_osc])
-
-                """axis.plot(time, potential-sim_inf, alpha=0.5, color=sci._utils.colours[2], label="residual")
-                axis.set_title(tk+" Hz")
-                axis.plot(time, potential, label=pk+lab)
-                axis.set_xlabel("Time (s)")
-                if q==0:
-                    axis.set_ylabel("Potential (V)")
-                axis.plot(time, sim_inf, linestyle="--", label="fitted")"""
-                
+                axis.plot(np.diff(time))
+                axis.set_xlabel("Time index")
+                axis.set_ylabel("Diff")                
 plt.show()  
 
            

@@ -14,7 +14,7 @@ plot_options=dict(zip(experiments, [
     {"hanning":False, "xaxis":"potential", "plot_func":np.real, "xlabel":"Potential (V)", "ylabel":"Current ($\\mu$A)", "remove_xaxis":True}
 ]))
 harmonics=len(harmonic_range)
-for i in range(0, len(experiments)):
+for i in range(1, len(experiments)):
     if experiments[i]=="FTACV":
         grouping=["mV.txt","Hz"]
         labels=["mV", "Hz"]
@@ -33,7 +33,7 @@ for i in range(0, len(experiments)):
         file_dict[files[j]]=np.loadtxt(directory+"/"+files[j])
     file_list=list(file_dict.keys())
 
-    for j in range(0, len(grouping)):
+    for j in range(0, 1):#len(grouping)
         sortdict={}
         for m in range(0, len(file_list)):
             split=file_list[m].split("_")  
@@ -49,49 +49,59 @@ for i in range(0, len(experiments)):
         
         plot_keys=list(sortdict.keys())
         plot_keys=[str(x) for x in sorted([int(x) for x in plot_keys])]
-        fig,ax=plt.subplots()
+       
         for m in range(0, len(plot_keys)):
 
             pk=plot_keys[m]
             trace_keys=[str(x) for x in sorted([int(x) for x in sortdict[pk]])]
-            local_options=copy.deepcopy(plot_options[experiments[i]])
+            
             
             for q in range(0, len(trace_keys)): 
                 tk=trace_keys[q]
-                datakey=tk+" "+labeldict[grouping[j-1]]+"_data"
-                if experiments[i]=="FTACV":
-                
-                
-                    time=sortdict[pk][tk][:,0]
-                    current=sortdict[pk][tk][:,1]*1e6
-                    potential=sortdict[pk][tk][:,2]
-                    local_options[datakey]={"time":time, "potential":potential, "current":current, }
-                    plt.plot(time, current)
-                    plt.show()
-                elif experiments[i]=="PSV":
-                    time=sortdict[pk][tk][:,0]
-                    current=sortdict[pk][tk][:,1]*1e6
-                    potential=sortdict[pk][tk][:,2]
-                    freq=sci.get_frequency(time, current)
-                    get_rid=5/freq
-                    idx=np.where(time>get_rid)
-                    time=time[idx]
-                    potential=potential[idx]
-                    current=current[idx]
-                    local_options[datakey]={"time":time, "potential":potential, "current":current, "harmonics":list(range(3, 11))}
-               
-                
+                labels=["Raw" , "Interpolated"]
+                local_options=copy.deepcopy(plot_options[experiments[i]])
+                for p in range(0,2):
+                    datakey=tk+" "+labeldict[grouping[j-1]]+labels[p]+"_data"
+
+                    if experiments[i]=="FTACV":
+                    
+                        
+                        time=sortdict[pk][tk][:,0]
+                        current=sortdict[pk][tk][:,1]*1e6
+                        potential=sortdict[pk][tk][:,2]
+                        local_options[datakey]={"time":time, "potential":potential, "current":current, }
+                    elif experiments[i]=="PSV":
+                        time=sortdict[pk][tk][:,0]
+                        current=sortdict[pk][tk][:,1]*1e6
+                        potential=sortdict[pk][tk][:,2]
+                        freq=sci.get_frequency(time, current)
+                        get_rid=0#5/freq
+                        idx=np.where(time>get_rid)
+                        time=time[idx]
+                        potential=potential[idx]
+                        current=current[idx]
+                        local_options[datakey]={"time":time, "potential":potential, "current":current, "harmonics":list(range(3, 11))}
+                    
+                    if p==1:
+                        if experiments[i]=="FTACV":
+                            chopped_time=time
+                        else:
+                            
+                            end_time=30/freq
+                            chopped_time=time[np.where(time<end_time)]
+                        local_options[datakey]["time"]=np.linspace(chopped_time[0], chopped_time[-1], len(chopped_time))
+                        local_options[datakey]["potential"]=np.interp(local_options[datakey]["time"], time,potential)
+                        local_options[datakey]["current"]=np.interp(local_options[datakey]["time"], time,current)
                 local_options["h_num"]=True
                 
 
-            
-            local_options["legend"]={"loc":"upper right", "ncol":2, "bbox_to_anchor":[1, 2], "frameon":False}
-            axes=sci.plot.plot_harmonics(**local_options)
-            axes[0].set_title(pk+" "+labeldict[grouping[j]])
-            fig=plt.gcf()
-            fig.set_size_inches(7, 9)
-            plt.show()
-            fig.savefig("Initial_plots/{2}/Grouped_by_{0}{1}.png".format(pk, labeldict[grouping[j]], experiments[i]), dpi=500)
+                local_options["legend"]={"loc":"upper right", "ncol":2, "bbox_to_anchor":[1, 2], "frameon":False}
+                axes=sci.plot.plot_harmonics(**local_options)
+                axes[0].set_title(pk+" "+labeldict[grouping[j]])
+                fig=plt.gcf()
+                fig.set_size_inches(7, 9)
+                
+                fig.savefig("Initial_plots/Interpolation/{2}_{0}{1}_{3}".format(pk, labeldict[grouping[j]], experiments[i], tk), dpi=500)
                 
            
 

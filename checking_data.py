@@ -11,7 +11,7 @@ Blankloc="Blank"
 experiments=["FTACV", "PSV"]
 
 
-for i in range(1, len(experiments)):
+for i in range(0, len(experiments)):
     if experiments[i]=="FTACV":
         grouping=["mV.txt", "Hz"]
         rows=2
@@ -29,7 +29,8 @@ for i in range(1, len(experiments)):
         file_dict[files[j]]=np.loadtxt(directory+"/"+files[j])
     file_list=list(file_dict.keys())
 
-    for j in range(0, 1):
+    for j in range(0, len(grouping)):
+        print(j)
         sortdict={}
         for m in range(0, len(file_list)):
             split=file_list[m].split("_")  
@@ -47,7 +48,7 @@ for i in range(1, len(experiments)):
         plot_keys=[str(x) for x in sorted([int(x) for x in plot_keys])]
         print(plot_keys)
         
-        for m in range(0, len(plot_keys)):
+        for m in range(1, len(plot_keys)):
 
             pk=plot_keys[m]
             trace_keys=[str(x) for x in sorted([int(x) for x in sortdict[pk]])]
@@ -67,7 +68,7 @@ for i in range(1, len(experiments)):
                     current=sortdict[pk][tk][:,1]*1e6
                     potential=sortdict[pk][tk][:,2]
                     freq=sci.get_frequency(time, current)
-                    get_rid=0#5/freq
+                    get_rid=5/freq
                     idx=np.where(time>get_rid)
                     time=time[idx]
                     potential=potential[idx]
@@ -81,38 +82,4 @@ for i in range(1, len(experiments)):
                 #axis=ax[rowdx, q%cols]
 
                
-                
-                p_est, p_inf, sim_est, sim_inf=sci.infer.get_input_parameters(time, potential, current,experiments[i], 
-                                                                                optimise=True, 
-                                                                                return_sim_values=True, 
-                                                                                sinusoidal_phase=False,
-                                                                                sigma=0.075,
-                                                                                runs=5
-                                                                                )
-                #p_est=sci.infer.get_input_parameters(time, potential, current,experiments[i], optimise=False)
-                print("['{0}']['{1}']['{2}']".format(experiments[i], pk, tk))
-                print(p_inf)
-                init=p_inf
-                init["Surface_coverage"]=1e-10
-                init["Temp"]=298
-                init["N_elec"]=1
-                init["area"]=0.07
-                twinx=axis.twinx()
-                axis.plot(potential)
-                axis.plot(sim_inf)
-                twinx.plot(potential-sim_inf)
-                plt.show()
-                
-                """axis.plot(time, potential-sim_inf, alpha=0.5, color=sci._utils.colours[2], label="residual")
-                axis.set_title(tk+" Hz")
-                axis.plot(time, potential, label=pk+lab)
-                axis.set_xlabel("Time (s)")
-                if q==0:
-                    axis.set_ylabel("Potential (V)")
-                axis.plot(time, sim_inf, linestyle="--", label="fitted")"""
-                
-   
-
-           
-
-    
+            print(any(time[:-1] >= time[1:]))

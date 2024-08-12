@@ -23,10 +23,9 @@ results_dict['PSV']['100']['9']={'Edc': np.float64(-0.4002382809977385), 'omega'
 results_dict['PSV']['100']['15']={'Edc': np.float64(-0.40027596880288496), 'omega': np.float64(14.988781419399213), 'phase': np.float64(3.8673457767858714), 'delta_E': np.float64(0.25961556953091686), 'phase_delta_E': np.float64(0.0011854343898596298), 'phase_omega': np.float64(92.76606968064118), 'phase_phase': np.float64(1.2097269862812539)}
 results_dict['PSV']['100']['21']={'Edc': np.float64(-0.4002616829802341), 'omega': np.float64(20.98454610332337), 'phase': np.float64(3.7133684339751927), 'delta_E': np.float64(0.21096337362617562), 'phase_delta_E': np.float64(-0.0003865370447724281), 'phase_omega': np.float64(2.7572035717779357), 'phase_phase': np.float64(0.1714948137654772)}
 row_keys=["80","250","100"]
-fig, ax=plt.subplots(3, 4)
 
-
-for i in range(1, len(experiments)):
+saved="/home/henryll/Documents/Experimental_data/ForGDrive/Interpolated/"
+for i in range(0, len(experiments)):
     if experiments[i]=="FTACV":
         grouping=["mV.txt", "Hz"]
         rows=2
@@ -41,109 +40,27 @@ for i in range(1, len(experiments)):
     files=os.listdir(directory)
     file_dict={}
     for j in range(0, len(files)):
-        file_dict[files[j]]=np.loadtxt(directory+"/"+files[j])
-    file_list=list(file_dict.keys())
-
-    for j in range(0, 1):
-        sortdict={}
-        for m in range(0, len(file_list)):
-            split=file_list[m].split("_")  
+        data=np.loadtxt(directory+"/"+files[j])
+        time=data[:,0]
+        potential=data[:,2]
+        current=data[:,1]
+        freq=sci.get_frequency(time, current)
+        end_time=35/freq
+        if experiments[i]=="FTACV":
+            chopped_time=time
+        else:
+            chopped_time=time[np.where(time<end_time)]
             
-            idx=split.index(grouping[j])
-            colkey=split[idx-1]
-            plotkey=split[split.index(grouping[j-1])-1]
+        interped_time=np.linspace(chopped_time[0], chopped_time[-1], len(chopped_time))
+        interped_potential=np.interp(interped_time, time, potential)
+        interped_current=np.interp(interped_time, time, current)
+        if experiments[i]=="PSV":
+            plt.plot(interped_potential, interped_current)
+            plt.show()
+        np.savetxt("/".join([saved, experiments[i], files[j]]), np.column_stack((interped_time, interped_current, interped_potential)))
 
-            if colkey in sortdict.keys():
-                sortdict[colkey][plotkey]=file_dict[file_list[m]]
-            else:
-                sortdict[colkey]={plotkey:file_dict[file_list[m]]}
-        
-        plot_keys=list(sortdict.keys())
-        plot_keys=[str(x) for x in sorted([int(x) for x in plot_keys])]
-        print(plot_keys)
-        
-        for m in range(0, len(plot_keys)):
-
-            pk=plot_keys[m]
-            trace_keys=[str(x) for x in sorted([int(x) for x in sortdict[pk]])]
-            print(trace_keys)
-            
-            for q in range(0, len(trace_keys)): 
-            
-                tk=trace_keys[q]
-                if experiments[i]=="FTACV":
-                
-                
-                    time=sortdict[pk][tk][:,0]
-                    current=sortdict[pk][tk][:,1]*1e6
-                    potential=sortdict[pk][tk][:,2]
-                elif experiments[i]=="PSV":
-                    time=sortdict[pk][tk][:,0]
-                    current=sortdict[pk][tk][:,1]*1e6
-                    potential=sortdict[pk][tk][:,2]
-                    freq=sci.get_frequency(time, current)
-                    get_rid=5/freq
-                    idx=np.where(time>get_rid)
-                    time=time[idx]
-                    potential=potential[idx]
-                    current=current[idx]
-                if experiments[i]=="FTACV":
-                    
-                    lab=" mV data"
-                elif experiments[i]=="PSV":
-                    
-                    lab=" oscillations data"
-                rowdx=row_keys.index(pk)
-                axis=ax[rowdx, q]
-
-               
-                init=results_dict[experiments[i]][pk][tk]
-                """init["Surface_coverage"]=1e-10
-                init["Temp"]=298
-                init["N_elec"]=1
-                init["area"]=0.07
-                voltage_simulator=sci.SingleExperiment(
-                    experiments[i],
-                    init,
-                    phase_function="sinusoidal"
-
-                )
-                
-                
-                sim_v=np.array(voltage_simulator.get_voltage(time, dimensional=True))
-                
-                #axis.plot(time[exclude_first_osc], sim_v[exclude_first_osc]-potential[exclude_first_osc])"""
-                
-                exclude_first_osc=np.where(time>(2/(init["omega"])))
-                init={key:init[key] for key in sci.experimental_input_params[experiments[i]]}
-                print(init)
-                init["Surface_coverage"]=1e-10
-                init["Temp"]=298
-                init["N_elec"]=1
-                init["area"]=0.07
-                voltage_simulator=sci.SingleExperiment(
-                    experiments[i],
-                    init,
-                    phase_function="constant"
-
-                )
-                sim_v_no_add_phase=np.array(voltage_simulator.get_voltage(time, dimensional=True))
-                #axis.plot(time[exclude_first_osc], sim_v_no_add_phase[exclude_first_osc]-potential[exclude_first_osc])
-                no_phase_analytic=init["Edc"]+init["delta_E"]*np.sin(2*np.pi*init["omega"]*time[exclude_first_osc]+init["phase"])
-                axis.plot(time[exclude_first_osc], potential)
-                axis.plot(time[exclude_first_osc], no_phase_analytic)
-                #axis.plot(time[exclude_first_osc], sim_v[exclude_first_osc]-potential[exclude_first_osc])
-
-                """axis.plot(time, potential-sim_inf, alpha=0.5, color=sci._utils.colours[2], label="residual")
-                axis.set_title(tk+" Hz")
-                axis.plot(time, potential, label=pk+lab)
-                axis.set_xlabel("Time (s)")
-                if q==0:
-                    axis.set_ylabel("Potential (V)")
-                axis.plot(time, sim_inf, linestyle="--", label="fitted")"""
-                
-plt.show()  
-
+   
+              
            
 
     
