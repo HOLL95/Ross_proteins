@@ -38,7 +38,7 @@ for i in range(0,len(frequencies)):
     )
     slurm_class.boundaries = {"k0": [1e-3, 500], 
                         "E0_mean": [-0.45, -0.35],
-                        "Cdl": [1e-6, 5e-4],
+                        "Cdl": [1e-6, 1e-4],
                         "gamma": [1e-11, 6e-11],
                         "Ru": [1, 1e3],
                         "E0_std":[1e-3, 0.06],
@@ -46,8 +46,8 @@ for i in range(0,len(frequencies)):
                         "CdlE2":[-5e-4, 5e-4],
                         "CdlE3":[-1e-5, 1e-5],
                         "alpha":[0.4, 0.6],
-                        "phase":[0,2*math.pi],
-                        "cap_phase":[0, 2*math.pi],
+                        "phase":[0,2*math.pi/2],
+                        "cap_phase":[0, 2*math.pi/2],
                         "omega":[0.8*results_dict["PSV"][frequencies[i]]["omega"], 1.2*results_dict["PSV"][frequencies[i]]["omega"]],
                         }
 
@@ -55,20 +55,18 @@ for i in range(0,len(frequencies)):
     slurm_class.dispersion_bins=[16]
     slurm_class.Fourier_fitting=True
     slurm_class.Fourier_window="hanning"
-    slurm_class.transient_removal=3/results_dict["PSV"][frequencies[i]]["omega"]
     slurm_class.top_hat_width=0.5
     slurm_class.Fourier_function="composite"
     slurm_class.Fourier_harmonics=list(range(3, 10))
-    slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","phase", "omega","cap_phase","alpha"]
-    slurm_class.setup(
-        datafile=loc+"PSV/"+data_dict["PSV"][frequencies[i]],
-        cpu_ram="8G",
-        time="0-08:00:00",
-        runs=10, 
-        threshold=1e-8, 
-        unchanged_iterations=200,
-        check_experiments={"FTACV":{"file":loc+"FTACV/250/"+data_dict["FTACV"][frequencies[i]], "parameters":results_dict["FTACV"]["250"][frequencies[i]]}},
-        results_directory=frequencies[i]+"Hz_PSV_5_Fourier",
-        debug=False,
-        run=True
-    )
+    slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","phase", "cap_phase","alpha"]
+    vals=[ -0.4473366371, 1.3838214001e-02, 1.613257081,      3.6422422587e-11,         641.1116274629,   7.5122274406e-05, 9.8522734385e-04,  3.0663524614e-04,  9.4027716834e-06,  15.0411609198, 0.0749376784,     2.3728325549,    0.4952567078, ]
+    vals=[ -0.3960441066, 6.5760581047e-03, 129.030442357,    2.0943823265e-11,         799.9715982521,   8.3457881706e-04*0.15, 7.6698755033e-03,  3.5920518897e-04,  -3.4905220018e-06, dictionary["omega"],  dictionary["phase"],    dictionary["phase"],     0.5567709679]
+    data=np.loadtxt(loc+"PSV/"+data_dict["PSV"][frequencies[i]])
+    import matplotlib.pyplot as plt
+    times=np.linspace(0, 20, 10000)
+    voltage=slurm_class.get_voltage(times=data[:,0], dimensional=True, input_parameters=results_dict["PSV"][frequencies[i]])
+    plt.plot(voltage)
+    plt.plot(data[:,2])
+    ax=plt.gca()
+    ax.twinx().plot(data[:,1])
+    plt.show()
