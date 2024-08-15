@@ -7,11 +7,13 @@ from scipy.optimize import fmin
 abspath="/home/henryll/Documents/Experimental_data/Nat/m4D2/"
 #abspath="/home/userfs/h/hll537/Documents/Experimental_data/m4D2"
 dataloc="m4D2_Data"
+dataloc="Interpolated"
 Blankloc="Blank"
 experiments=["FTACV", "PSV"]
 
 
-saved="/home/henryll/Documents/Experimental_data/ForGDrive/Interpolated"
+abspath="/users/hll537/Experimental_data"
+saved=abspath+"/Interpolated"
 for i in range(1, len(experiments)):
     if experiments[i]=="FTACV":
         grouping=["mV.txt", "Hz"]
@@ -24,6 +26,7 @@ for i in range(1, len(experiments)):
         cols=2
     
     directory="/".join([abspath, dataloc, experiments[i]])
+    
     files=os.listdir(directory)
     file_dict={}
     for j in range(0, len(files)):
