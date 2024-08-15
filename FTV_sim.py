@@ -1,6 +1,7 @@
 import Surface_confined_inference as sci
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 results_dict={"FTACV":{"80":{}, "250":{}}, "PSV":{}}
 results_dict['FTACV']['80']['3']={'E_start': np.float64(-0.8006475758896721), 'E_reverse': np.float64(-0.0005643140832054527), 'omega': np.float64(2.7893933220163056), 'phase': np.float64(6.0963661768311965), 'delta_E': np.float64(0.07773033393989036), 'v': np.float64(0.0553759383170455), 'phase_delta_E': np.float64(0.017041489489115325), 'phase_omega': np.float64(0.1), 'phase_phase': np.float64(4.450487852784928)}
 results_dict['FTACV']['80']['9']={'E_start': np.float64(-0.8006117990463852), 'E_reverse': np.float64(-0.0005378379312415138), 'omega': np.float64(8.368818213300784), 'phase': np.float64(5.724833637340166), 'delta_E': np.float64(0.06684109310228693), 'v': np.float64(0.05537358012592774), 'phase_delta_E': np.float64(0.0008055595726608189), 'phase_omega': np.float64(395.718786830266), 'phase_phase': np.float64(1.3981535550876787)}
@@ -18,15 +19,15 @@ results_dict['PSV']['21']={'Edc': np.float64(-0.4002616829802341), 'omega': np.f
 frequencies=["3","9","15","21"]
 for i in range(0, len(frequencies)):
 
-    dictionary=results_dict["PSV"][frequencies[i]]
+    dictionary={key:results_dict["FTACV"]["250"][frequencies[i]][key] for key in results_dict["FTACV"]["250"][frequencies[i]].keys() if "phase_" not in key}
     dictionary["Temp"]=298
     dictionary["area"]=0.07
     dictionary["N_elec"]=1
-    dictionary["Surface_coverage"]=1e-10
+    dictionary["Surface_coverage"]=1e-11
     slurm_class = sci.SingleSlurmSetup(
-        "PSV",
+        "FTACV",
         dictionary,
-        phase_function="sinusoidal"
+        phase_function="constant"
     )
     slurm_class.boundaries = {"k0": [1e-3, 500], 
                         "E0_mean": [-0.6, -0.2],
@@ -50,13 +51,12 @@ for i in range(0, len(frequencies)):
     slurm_class.Fourier_function="composite"
     slurm_class.Fourier_harmonics=list(range(3, 10))
     slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","phase", "cap_phase","alpha"]
-    slurm_class.setup(
-        datafile="/home/henryll/Documents/Experimental_data/ForGDrive/Interpolated/PSV/PSV_m4D2_PGE_3_Hz_100_osc.txt",
-        cpu_ram="8G",
-        time="0-00:10:00",
-        runs=10, 
-        threshold=1e3, 
-        unchanged_iterations=1,
-        results_directory=frequencies[i]+"Hz",
-        debug=True
-    )
+    init_vals=[-0.4047536814, 0.0507809781,     200.7317584608,   3.5120367467e-11,         351.5388710328,   1.0994474853e-05, 4.1186260389e-04,  7.9306701013e-05,  2.2053550783e-06,  3.0402283637,  3.0546975619,     2.2847792671,     0.5438261746,]
+    data=np.loadtxt("/home/henryll/Documents/Experimental_data/ForGDrive/Interpolated/FTACV/250/FTACV_m4D2_PGE_59.60_mV_s-1_3_Hz_250_mV.txt")
+    time=data[:,0]
+    potential=data[:,2]
+    current=data[:,1]
+    test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(init_vals, time))
+    sci.plot.plot_harmonics(Data_data={"time":time, "current":current, "potential":potential, "harmonics":list(range(0, 10))},
+                            Sim_data={"time":time, "current":test, "potential":potential, "harmonics":list(range(0, 10))},plot_func=np.abs, hanning=True)
+    plt.show()

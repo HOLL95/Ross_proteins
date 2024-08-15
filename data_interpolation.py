@@ -46,10 +46,11 @@ for i in range(0, len(experiments)):
         current=data[:,1]
         freq=sci.get_frequency(time, current)
         end_time=35/freq
+        start_time=0
         if experiments[i]=="FTACV":
             chopped_time=time
         else:
-            chopped_time=time[np.where(time<end_time)]
+            chopped_time=time[np.where((time<end_time) & (time>=start_time))]
             
         interped_time=np.linspace(chopped_time[0], chopped_time[-1], len(chopped_time))
         interped_potential=np.interp(interped_time, time, potential)
