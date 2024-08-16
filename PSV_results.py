@@ -32,6 +32,11 @@ for i in range(0,len(frequencies)):
      dictionary["Surface_coverage"]=1e-11
      dictionary["area"]=0.07
 
+    dictionary=results_dict["PSV"][frequencies[i]]
+    dictionary["Temp"]=298
+    dictionary["area"]=0.07
+    dictionary["N_elec"]=1
+    dictionary["Surface_coverage"]=1e-11
     slurm_class = sci.SingleSlurmSetup(
         "PSV",
         results_dict["PSV"][frequencies[i]],
@@ -39,7 +44,7 @@ for i in range(0,len(frequencies)):
     )
     slurm_class.boundaries = {"k0": [1e-3, 500], 
                         "E0_mean": [-0.45, -0.35],
-                        "Cdl": [1e-6, 1e-4],
+                        "Cdl": [1e-6, 5e-4],
                         "gamma": [1e-11, 6e-11],
                         "Ru": [1, 1e3],
                         "E0_std":[1e-3, 0.06],
@@ -47,8 +52,8 @@ for i in range(0,len(frequencies)):
                         "CdlE2":[-5e-4, 5e-4],
                         "CdlE3":[-1e-5, 1e-5],
                         "alpha":[0.4, 0.6],
-                        "phase":[0,2*math.pi/2],
-                        "cap_phase":[0, 2*math.pi/2],
+                        "phase":[0,2*math.pi],
+                        "cap_phase":[0, 2*math.pi],
                         "omega":[0.8*results_dict["PSV"][frequencies[i]]["omega"], 1.2*results_dict["PSV"][frequencies[i]]["omega"]],
                         }
 
@@ -56,14 +61,14 @@ for i in range(0,len(frequencies)):
     slurm_class.dispersion_bins=[16]
     slurm_class.Fourier_fitting=True
     slurm_class.Fourier_window="hanning"
+    slurm_class.transient_removal=3/results_dict["PSV"][frequencies[i]]["omega"]
     slurm_class.top_hat_width=0.5
     slurm_class.Fourier_function="composite"
     slurm_class.Fourier_harmonics=list(range(3, 10))
-    slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","phase", "cap_phase","alpha"]
-    vals=[ -0.4473366371, 1.3838214001e-02, 1.613257081,      3.6422422587e-11,         641.1116274629,   7.5122274406e-05, 9.8522734385e-04,  3.0663524614e-04,  9.4027716834e-06,  15.0411609198, 0.0749376784,     2.3728325549,    0.4952567078, ]
-    vals=[ -0.3960441066, 6.5760581047e-03, 129.030442357,    2.0943823265e-11,         799.9715982521,   8.3457881706e-04*0.15, 7.6698755033e-03,  3.5920518897e-04,  -3.4905220018e-06, dictionary["omega"],  dictionary["phase"],    dictionary["phase"],     0.5567709679]
-    vals=[-0.3939129035, 0.0299096422,     100.7564518212,   2.9160858569e-11,         626.8050251157,   7.3227086473e-05, 1.0915075973e-03,  -4.7015409912e-04, 3.9257691660e-06, 4.7257261124, 2.9838114223,  4.859606171,     0.5587321521]
+    slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","phase", "omega","cap_phase","alpha"]
     vals=[-0.4279614654, 0.0588029292,     204.7075623261,   5.9999383440e-11,         721.1722868916,   1.0053023051e-04, -7.9868011396e-03, 4.1358395131e-06,  9.9973984312e-06, 4.3557540068, 2.9977399043,  4.2546950225,    0.5685817265, ]
+    vals=[ -0.3685896915, 0.0598728447,     29.2394375328,    5.9892872937e-11,         109.7773286158,   4.9963363819e-04, 7.7144010450e-03,  3.6288076304e-05,  -8.2225864122e-06, 1.7504324844, 2.9976799911,  5.4135663978,     0.5502089163,]
+    #vals=[-0.3939129035, 0.0299096422,     100.7564518212,   2.9160858569e-11,         626.8050251157,   7.3227086473e-05, 1.0915075973e-03,  -4.7015409912e-04, 3.9257691660e-06, 4.7257261124, 2.9838114223,  4.859606171,     0.5587321521, ]
     data=np.loadtxt(loc+"PSV/"+data_dict["PSV"][frequencies[i]])
     import matplotlib.pyplot as plt
     
@@ -79,3 +84,4 @@ for i in range(0,len(frequencies)):
     ax.plot(potential, current)
     ax.plot(potential, sim)
     plt.show()
+    

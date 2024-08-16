@@ -45,18 +45,23 @@ for i in range(0, len(frequencies)):
                         }
 
     slurm_class.GH_quadrature=True
-    slurm_class.dispersion_bins=[16]
+    slurm_class.dispersion_bins=[20]
     slurm_class.Fourier_fitting=True
     slurm_class.top_hat_width=0.25
     slurm_class.Fourier_function="composite"
     slurm_class.Fourier_harmonics=list(range(3, 10))
     slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","phase", "cap_phase","alpha"]
     init_vals=[-0.4047536814, 0.0507809781,     200.7317584608,   3.5120367467e-11,         351.5388710328,   1.0994474853e-05, 4.1186260389e-04,  7.9306701013e-05,  2.2053550783e-06,  3.0402283637,  3.0546975619,     2.2847792671,     0.5438261746,]
-    data=np.loadtxt("/home/henryll/Documents/Experimental_data/ForGDrive/Interpolated/FTACV/250/FTACV_m4D2_PGE_59.60_mV_s-1_3_Hz_250_mV.txt")
+    init_vals=[ -0.4279614654, 0.0588029292,     204.7075623261,   5.9999383440e-11,         721.1722868916,   1.0053023051e-04, -7.9868011396e-03, 4.1358395131e-06,  9.9973984312e-06, dictionary["omega"], dictionary["phase"],  dictionary["phase"],    0.5685817265,]
+    data=np.loadtxt("/home/henryll/Documents/Experimental_data/ForGDrive/Interpolated/FTACV/250/FTACV_m4D2_PGE_59.60_mV_s-1_{0}_Hz_250_mV.txt".format(frequencies[i]))
     time=data[:,0]
     potential=data[:,2]
     current=data[:,1]
     test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(init_vals, time))
-    sci.plot.plot_harmonics(Data_data={"time":time, "current":current, "potential":potential, "harmonics":list(range(0, 10))},
-                            Sim_data={"time":time, "current":test, "potential":potential, "harmonics":list(range(0, 10))},plot_func=np.abs, hanning=True)
-    plt.show()
+    axes=sci.plot.plot_harmonics(Data_data={"time":time, "current":current*1e6, "potential":potential, "harmonics":list(range(2, 10))},
+                            Sim_data={"time":time, "current":test*1e6, "potential":potential, "harmonics":list(range(2, 10))},plot_func=np.abs, 
+                            hanning=True, filter_val=0.25, xlabel="Time (s)", ylabel="Current ($\\mu$A)", remove_xaxis=True)
+    axes[0].set_title("{0} Hz".format(frequencies[i]))
+    fig=plt.gcf()
+    fig.set_size_inches(5, 6)
+    fig.savefig("Initial_plots/Init_results/{0}_Hz_FTV_harmonics".format(frequencies[i]), dpi=500)
