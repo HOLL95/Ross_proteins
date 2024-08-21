@@ -39,12 +39,12 @@ for i in range(0,len(frequencies)):
     slurm_class.boundaries = {"k0": [1e-3, 500], 
                         "E0_mean": [-0.45, -0.35],
                         "Cdl": [1e-6, 5e-4],
-                        "gamma": [1e-11, 6e-11],
+                        "gamma": [1e-11, 8e-11],
                         "Ru": [1, 1e3],
-                        "E0_std":[1e-3, 0.06],
-                        "CdlE1":[-8e-3, 8e-3],
-                        "CdlE2":[-5e-4, 5e-4],
-                        "CdlE3":[-1e-5, 1e-5],
+                        "E0_std":[1e-3, 0.09],
+                        "CdlE1":[-1e-2, 1e-2],
+                        "CdlE2":[-1e-3, 1e-3],
+                        "CdlE3":[-5e-5, 5e-5],
                         "alpha":[0.4, 0.6],
                         "phase":[0,2*math.pi],
                         "cap_phase":[0, 2*math.pi],
@@ -52,23 +52,23 @@ for i in range(0,len(frequencies)):
                         }
 
     slurm_class.GH_quadrature=True
-    slurm_class.dispersion_bins=[16]
-    slurm_class.Fourier_fitting=True
+    slurm_class.dispersion_bins=[25]
+    slurm_class.Fourier_fitting=False
     slurm_class.Fourier_window="hanning"
     slurm_class.transient_removal=3/results_dict["PSV"][frequencies[i]]["omega"]
     slurm_class.top_hat_width=0.5
     slurm_class.Fourier_function="composite"
-    slurm_class.Fourier_harmonics=list(range(3, 10))
+    slurm_class.Fourier_harmonics=list(range(4, 10))
     slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","phase", "omega","cap_phase","alpha"]
     slurm_class.setup(
         datafile=loc+"PSV/"+data_dict["PSV"][frequencies[i]],
         cpu_ram="8G",
         time="0-08:00:00",
-        runs=10, 
+        runs=20, 
         threshold=1e-8, 
         unchanged_iterations=200,
         check_experiments={"FTACV":{"file":loc+"FTACV/250/"+data_dict["FTACV"][frequencies[i]], "parameters":results_dict["FTACV"]["250"][frequencies[i]]}},
-        results_directory=frequencies[i]+"Hz_PSV_5_Fourier",
+        results_directory=frequencies[i]+"Hz_PSV_7_Time",
         debug=False,
         run=True
     )
