@@ -23,6 +23,7 @@ data_dict={"FTACV":{"3":"FTACV_m4D2_PGE_59.60_mV_s-1_3_Hz_250_mV.txt",
                 "15":"PSV_m4D2_PGE_15_Hz_100_osc.txt",
                 "21":"PSV_m4D2_PGE_21_Hz_100_osc.txt"}}
 loc="/users/hll537/Experimental_data/Interpolated/"
+loc="/home/henryll/Documents/Experimental_data/ForGDrive/Interpolated/"
 frequencies=["3","9","15","21"]
 for i in range(0,len(frequencies)):
     for dictionary in [results_dict["PSV"][frequencies[i]], results_dict["FTACV"]["250"][frequencies[i]]]:
@@ -35,7 +36,7 @@ for i in range(0,len(frequencies)):
     dictionary["Temp"]=298
     dictionary["area"]=0.07
     dictionary["N_elec"]=1
-    dictionary["Surface_coverage"]=1e-10
+    dictionary["Surface_coverage"]=1e-11
     slurm_class = sci.SingleSlurmSetup(
         "PSV",
         results_dict["PSV"][frequencies[i]],
@@ -44,12 +45,12 @@ for i in range(0,len(frequencies)):
     slurm_class.boundaries = {"k0": [1e-3, 500], 
                         "E0_mean": [-0.45, -0.35],
                         "Cdl": [1e-6, 5e-4],
-                        "gamma": [1e-11, 8e-11],
+                        "gamma": [1e-11, 6e-11],
                         "Ru": [1, 1e3],
-                        "E0_std":[1e-3, 0.09],
-                        "CdlE1":[-1e-2, 1e-2],
-                        "CdlE2":[-1e-3, 1e-3],
-                        "CdlE3":[-5e-5, 5e-5],
+                        "E0_std":[1e-3, 0.06],
+                        "CdlE1":[-8e-3, 8e-3],
+                        "CdlE2":[-5e-4, 5e-4],
+                        "CdlE3":[-1e-5, 1e-5],
                         "alpha":[0.4, 0.6],
                         "phase":[0,2*math.pi],
                         "cap_phase":[0, 2*math.pi],
@@ -57,23 +58,30 @@ for i in range(0,len(frequencies)):
                         }
 
     slurm_class.GH_quadrature=True
-    slurm_class.dispersion_bins=[25]
-    slurm_class.Fourier_fitting=False
+    slurm_class.dispersion_bins=[16]
+    slurm_class.Fourier_fitting=True
     slurm_class.Fourier_window="hanning"
     slurm_class.transient_removal=3/results_dict["PSV"][frequencies[i]]["omega"]
     slurm_class.top_hat_width=0.5
     slurm_class.Fourier_function="composite"
-    slurm_class.Fourier_harmonics=list(range(4, 10))
+    slurm_class.Fourier_harmonics=list(range(3, 10))
     slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","phase", "omega","cap_phase","alpha"]
-    slurm_class.setup(
-        datafile=loc+"PSV/"+data_dict["PSV"][frequencies[i]],
-        cpu_ram="8G",
-        time="0-08:00:00",
-        runs=20, 
-        threshold=1e-8, 
-        unchanged_iterations=200,
-        check_experiments={"FTACV":{"file":loc+"FTACV/250/"+data_dict["FTACV"][frequencies[i]], "parameters":results_dict["FTACV"]["250"][frequencies[i]]}},
-        results_directory=frequencies[i]+"Hz_PSV_7_Time",
-        debug=False,
-        run=True
+    vals=[-0.4279614654, 0.0588029292,     204.7075623261,   5.9999383440e-11,         721.1722868916,   1.0053023051e-04, -7.9868011396e-03, 4.1358395131e-06,  9.9973984312e-06, 4.3557540068, 2.9977399043,  4.2546950225,    0.5685817265, ]
+    vals=[ -0.3685896915, 0.0598728447,     29.2394375328,    5.9892872937e-11,         109.7773286158,   4.9963363819e-04, 7.7144010450e-03,  3.6288076304e-05,  -8.2225864122e-06, 1.7504324844, 2.9976799911,  5.4135663978,     0.5502089163,]
+    #vals=[-0.3939129035, 0.0299096422,     100.7564518212,   2.9160858569e-11,         626.8050251157,   7.3227086473e-05, 1.0915075973e-03,  -4.7015409912e-04, 3.9257691660e-06, 4.7257261124, 2.9838114223,  4.859606171,     0.5587321521, ]
+    data=np.loadtxt(loc+"PSV/"+data_dict["PSV"][frequencies[i]])
+    import matplotlib.pyplot as plt
+    
+    time=data[:,0]
+    time_idx=np.where(time>(5/(results_dict["PSV"][frequencies[i]]["omega"])))
+    current=data[:,1]
+    potential=data[:,2]
+    sim=slurm_class.dim_i(slurm_class.Dimensionalsimulate(vals, time))
+    sci.plot.plot_harmonics(data_data={"time":time[time_idx], "current":current[time_idx], "potential":potential[time_idx], "harmonics":list(range(3, 10))},
+                            sim_data={"time":time[time_idx], "current":sim[time_idx], "potential":potential[time_idx], "harmonics":list(range(3, 10))}, xaxis="potential"
     )
+    fig, ax=plt.subplots()
+    ax.plot(potential, current)
+    ax.plot(potential, sim)
+    plt.show()
+    

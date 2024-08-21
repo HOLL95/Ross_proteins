@@ -6,7 +6,8 @@ import copy
 from scipy.optimize import fmin
 abspath="/home/henryll/Documents/Experimental_data/Nat/m4D2/"
 #abspath="/home/userfs/h/hll537/Documents/Experimental_data/m4D2"
-dataloc="m4D2_Data"
+abspath="/home/henryll/Documents/Experimental_data/ForGDrive/"
+dataloc="M4D2Round2"
 Blankloc="Blank"
 experiments=["FTACV", "PSV"]
 results_dict={"FTACV":{"80":{}, "250":{}}, "PSV":{"100":{}}}
@@ -24,8 +25,8 @@ results_dict['PSV']['100']['15']={'Edc': np.float64(-0.40027596880288496), 'omeg
 results_dict['PSV']['100']['21']={'Edc': np.float64(-0.4002616829802341), 'omega': np.float64(20.98454610332337), 'phase': np.float64(3.7133684339751927), 'delta_E': np.float64(0.21096337362617562), 'phase_delta_E': np.float64(-0.0003865370447724281), 'phase_omega': np.float64(2.7572035717779357), 'phase_phase': np.float64(0.1714948137654772)}
 row_keys=["80","250","100"]
 
-saved="/home/henryll/Documents/Experimental_data/ForGDrive/Interpolated/"
-for i in range(0, len(experiments)):
+saved="/home/henryll/Documents/Experimental_data/ForGDrive/Inference_round_2/"
+for i in range(1, len(experiments)):
     if experiments[i]=="FTACV":
         grouping=["mV.txt", "Hz"]
         rows=2
@@ -40,25 +41,29 @@ for i in range(0, len(experiments)):
     files=os.listdir(directory)
     file_dict={}
     for j in range(0, len(files)):
-        data=np.loadtxt(directory+"/"+files[j])
-        time=data[:,0]
-        potential=data[:,2]
-        current=data[:,1]
+        print(files[j])
+        data=np.loadtxt(directory+"/"+files[j], delimiter=",",skiprows=1)
+        time=data[:,2]
+        potential=data[:,5]
+        current=data[:,4]
+       
         freq=sci.get_frequency(time, current)
         end_time=35/freq
         start_time=0
         if experiments[i]=="FTACV":
             chopped_time=time
+            np.savetxt("/".join([saved, experiments[i], files[j]]), np.column_stack((time, current, potential)))
         else:
-            chopped_time=time[np.where((time<end_time) & (time>=start_time))]
-            
-        interped_time=np.linspace(chopped_time[0], chopped_time[-1], len(chopped_time))
-        interped_potential=np.interp(interped_time, time, potential)
-        interped_current=np.interp(interped_time, time, current)
-        if experiments[i]=="PSV":
-            plt.plot(interped_potential, interped_current)
+            chopped_time=np.where((time<end_time) & (time>=start_time))
+            plt.plot(potential[chopped_time], current[chopped_time])
             plt.show()
-        np.savetxt("/".join([saved, experiments[i], files[j]]), np.column_stack((interped_time, interped_current, interped_potential)))
+            #interped_time=np.linspace(chopped_time[0], chopped_time[-1], len(chopped_time))
+            #interped_potential=np.interp(interped_time, time, potential)
+            #interped_current=np.interp(interped_time, time, current)
+            #if experiments[i]=="PSV":
+            #    plt.plot(interped_potential, interped_current)
+            #    plt.show()
+            np.savetxt("/".join([saved, experiments[i], files[j]]), np.column_stack((time[chopped_time], current[chopped_time], potential[chopped_time])))
 
    
               

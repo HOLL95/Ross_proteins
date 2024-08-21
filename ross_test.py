@@ -23,6 +23,7 @@ data_dict={"FTACV":{"3":"FTACV_m4D2_PGE_59.60_mV_s-1_3_Hz_250_mV.txt",
                 "15":"PSV_m4D2_PGE_15_Hz_100_osc.txt",
                 "21":"PSV_m4D2_PGE_21_Hz_100_osc.txt"}}
 loc="/users/hll537/Experimental_data/Interpolated/"
+loc="/home/henryll/Documents/Experimental_data/ForGDrive/Interpolated/"
 frequencies=["3","9","15","21"]
 for i in range(0,len(frequencies)):
     for dictionary in [results_dict["PSV"][frequencies[i]], results_dict["FTACV"]["250"][frequencies[i]]]:
@@ -61,12 +62,20 @@ for i in range(0,len(frequencies)):
     slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","phase", "cap_phase","alpha"]
     vals=[ -0.4473366371, 1.3838214001e-02, 1.613257081,      3.6422422587e-11,         641.1116274629,   7.5122274406e-05, 9.8522734385e-04,  3.0663524614e-04,  9.4027716834e-06,  15.0411609198, 0.0749376784,     2.3728325549,    0.4952567078, ]
     vals=[ -0.3960441066, 6.5760581047e-03, 129.030442357,    2.0943823265e-11,         799.9715982521,   8.3457881706e-04*0.15, 7.6698755033e-03,  3.5920518897e-04,  -3.4905220018e-06, dictionary["omega"],  dictionary["phase"],    dictionary["phase"],     0.5567709679]
+    vals=[-0.3939129035, 0.0299096422,     100.7564518212,   2.9160858569e-11,         626.8050251157,   7.3227086473e-05, 1.0915075973e-03,  -4.7015409912e-04, 3.9257691660e-06, 4.7257261124, 2.9838114223,  4.859606171,     0.5587321521]
+    vals=[-0.4279614654, 0.0588029292,     204.7075623261,   5.9999383440e-11,         721.1722868916,   1.0053023051e-04, -7.9868011396e-03, 4.1358395131e-06,  9.9973984312e-06, 4.3557540068, 2.9977399043,  4.2546950225,    0.5685817265, ]
     data=np.loadtxt(loc+"PSV/"+data_dict["PSV"][frequencies[i]])
     import matplotlib.pyplot as plt
-    times=np.linspace(0, 20, 10000)
-    voltage=slurm_class.get_voltage(times=data[:,0], dimensional=True, input_parameters=results_dict["PSV"][frequencies[i]])
-    plt.plot(voltage)
-    plt.plot(data[:,2])
-    ax=plt.gca()
-    ax.twinx().plot(data[:,1])
+    
+    time=data[:,0]
+    time_idx=np.where(time>(5/(results_dict["PSV"][frequencies[i]]["omega"])))
+    current=data[:,1]
+    potential=data[:,2]
+    sim=slurm_class.dim_i(slurm_class.Dimensionalsimulate(vals, time))
+    sci.plot.plot_harmonics(data_data={"time":time[time_idx], "current":current[time_idx], "potential":potential[time_idx], "harmonics":list(range(3, 10))},
+                            sim_data={"time":time[time_idx], "current":sim[time_idx], "potential":potential[time_idx], "harmonics":list(range(3, 10))}, xaxis="potential"
+    )
+    fig, ax=plt.subplots()
+    ax.plot(potential, current)
+    ax.plot(potential, sim)
     plt.show()
