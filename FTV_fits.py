@@ -61,8 +61,13 @@ for i in range(0,2):
         slurm_class.Fourier_function="abs"
         slurm_class.Fourier_harmonics=list(range(3, 10))
         slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
+        file=data_dict["FTACV"][frequencies[i]]
+        if amp=="80":
+            splitfile=file.split("_")
+            splitfile[splitfile.index("250")]="80"
+            file="_".join(splitfile)
         slurm_class.setup(
-            datafile=loc+"FTACV/{0}/".format(amp)+data_dict["FTACV"][frequencies[i]],
+            datafile=loc+"FTACV/{0}/".format(amp)+file,
             cpu_ram="8G",
             time="0-12:00:00",
             runs=20, 
