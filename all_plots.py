@@ -100,7 +100,7 @@ for i in range(1, len(experiments)):
                 axes[0].set_title(pk+" "+labeldict[grouping[j]])
                 fig=plt.gcf()
                 fig.set_size_inches(7, 9)
-                
+                plt.show()
                 fig.savefig("Initial_plots/Interpolation/{2}_{0}{1}_{3}".format(pk, labeldict[grouping[j]], experiments[i], tk), dpi=500)
                 
            

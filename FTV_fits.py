@@ -24,50 +24,52 @@ data_dict={"FTACV":{"3":"FTACV_m4D2_PGE_59.60_mV_s-1_3_Hz_250_mV.txt",
                 "21":"PSV_m4D2_PGE_21_Hz_100_osc.txt"}}
 loc="/users/hll537/Experimental_data/Interpolated/"
 frequencies=["3","9","15","21"]
-for i in range(0,len(frequencies)):
-    for dictionary in [results_dict["PSV"][frequencies[i]], results_dict["FTACV"]["250"][frequencies[i]]]:
-     dictionary["Temp"]=298
-     dictionary["N_elec"]=1
-     dictionary["Surface_coverage"]=1e-11
-     dictionary["area"]=0.07
+amps=["80","250"]
+for i in range(0,2):
+    for j in range(0, len(amps)):
+        amp=amps[j]
+        for dictionary in [results_dict["PSV"][frequencies[i]], results_dict["FTACV"][amp][frequencies[i]]]:
+            dictionary["Temp"]=298
+            dictionary["N_elec"]=1
+            dictionary["Surface_coverage"]=1e-11
+            dictionary["area"]=0.07
 
-    slurm_class = sci.SingleSlurmSetup(
-        "FTACV",
-        results_dict["FTACV"]["250"][frequencies[i]],
-        phase_function="constant"
-    )
-    slurm_class.boundaries = {"k0": [1e-3, 500], 
-                        "E0_mean": [-0.6, -0.2],
-                        "Cdl": [1e-5, 1e-4],
-                        "gamma": [1e-11, 1e-10],
-                        "Ru": [1, 1e3],
-                        "E0_std":[1e-3, 0.06],
-                        "CdlE1":[-3e-3, 3e-3],
-                        "CdlE2":[-1e-4, 1e-4],
-                        "CdlE3":[-5e-6, 5e-6],
-                        "alpha":[0.4, 0.6],
-                        "phase":[0,2*math.pi/2],
-                        "cap_phase":[0, 2*math.pi/2],
-                        "omega":[0.8*results_dict["PSV"][frequencies[i]]["omega"], 1.2*results_dict["PSV"][frequencies[i]]["omega"]],
-                        }
+            slurm_class = sci.SingleSlurmSetup(
+                "FTACV",
+                results_dict["FTACV"][amp][frequencies[i]],
+                phase_function="constant"
+            )
+            slurm_class.boundaries = {"k0": [100, 500], 
+                                "E0_mean": [-0.45, -0.37],
+                                "Cdl": [1e-6, 1e-4],
+                                "gamma": [1e-11, 5e-11],
+                                "Ru": [1, 500],
+                                "E0_std":[0.04, 0.09],
+                                "CdlE1":[-3e-3, 3e-3],
+                                "CdlE2":[-1e-4, 1e-4],
+                                "CdlE3":[-5e-6, 5e-6],
+                                "alpha":[0.4, 0.6],
+                                "phase":[0,2*math.pi/2],
+                                "omega":[0.8*dictionary["omega"], 1.2*dictionary["omega"]],
+                                }
 
-    slurm_class.GH_quadrature=True
-    slurm_class.dispersion_bins=[16]
-    slurm_class.Fourier_fitting=False
-    slurm_class.Fourier_window="hanning"
-    slurm_class.top_hat_width=0.25
-    slurm_class.Fourier_function="abs"
-    slurm_class.Fourier_harmonics=list(range(3, 10))
-    slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","phase", "cap_phase","alpha"]
-    slurm_class.setup(
-        datafile=loc+"FTACV/250/"+data_dict["FTACV"][frequencies[i]],
-        cpu_ram="8G",
-        time="0-12:00:00",
-        runs=20, 
-        threshold=1e-8, 
-        unchanged_iterations=200,
-        check_experiments={"PSV":{"file":loc+"PSV/"+data_dict["PSV"][frequencies[i]], "parameters":results_dict["PSV"][frequencies[i]]}},
-        results_directory=frequencies[i]+"Hz3",
-        debug=False,
-        run=True
-    )
+            slurm_class.GH_quadrature=True
+            slurm_class.dispersion_bins=[25]
+            slurm_class.Fourier_fitting=True
+            slurm_class.Fourier_window="hanning"
+            slurm_class.top_hat_width=0.25
+            slurm_class.Fourier_function="abs"
+            slurm_class.Fourier_harmonics=list(range(3, 10))
+            slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
+            slurm_class.setup(
+                datafile=loc+"FTACV/{0}/".format(amp)+data_dict["FTACV"][frequencies[i]],
+                cpu_ram="8G",
+                time="0-12:00:00",
+                runs=20, 
+                threshold=1e-8, 
+                unchanged_iterations=200,
+                #check_experiments={"PSV":{"file":loc+"PSV/"+data_dict["PSV"][frequencies[i]], "parameters":results_dict["PSV"][frequencies[i]]}},
+                results_directory=frequencies[i]+"Hz3_FTV_Fourier",
+                debug=False,
+                run=True
+            )
