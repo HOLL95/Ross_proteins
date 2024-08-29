@@ -3,3 +3,4 @@ inference_results*
 *.out
 slurm_logs
 Submission
+*Hz*
