@@ -55,9 +55,9 @@ for i in range(0, len(experiments)):
         interped_time=np.linspace(chopped_time[0], chopped_time[-1], len(chopped_time))
         interped_potential=np.interp(interped_time, time, potential)
         interped_current=np.interp(interped_time, time, current)
-        if experiments[i]=="PSV":
-            plt.plot(interped_potential, interped_current)
-            plt.show()
+        #if experiments[i]=="PSV":
+        #    plt.plot(interped_potential, interped_current)
+        #    plt.show()
         np.savetxt("/".join([saved, experiments[i], files[j]]), np.column_stack((interped_time, interped_current, interped_potential)))
 
    

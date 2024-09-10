@@ -90,7 +90,7 @@ for i in range(1, len(experiments)):
                                                                                 runs=5
                                                                                 )
                 #p_est=sci.infer.get_input_parameters(time, potential, current,experiments[i], optimise=False)
-                print("['{0}']['{1}']['{2}']".format(experiments[i], pk, tk))
+                print("experiments_idct['{0}']['{1}']['{2}']=".format(experiments[i], pk, tk), p_inf)
                 print(p_inf)
                 init=p_inf
                 init["Surface_coverage"]=1e-10
