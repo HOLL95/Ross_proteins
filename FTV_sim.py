@@ -37,7 +37,7 @@ for i in range(0, len(frequencies)):
                             "Cdl": [1e-5, 1e-3],
                             "gamma": [1e-11, 1e-9],
                             "Ru": [1, 1e3],
-                            "E0_std":[1e-3, 0.06],
+                            "E0_std":[1e-3, 0.1],
                             "CdlE1":[-3e-3, 3e-3],
                             "CdlE2":[-1e-4, 1e-4],
                             "CdlE3":[-5e-6, 5e-6],

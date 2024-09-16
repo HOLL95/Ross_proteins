@@ -41,12 +41,12 @@ for i in range(0,2):#len(frequencies)):
         results_dict["PSV"][frequencies[i]],
         phase_function="constant"
     )
-    slurm_class.boundaries = {"k0": [1e-3, 2000], 
+    slurm_class.boundaries = {"k0": [1e-3, 3000], 
                         "E0_mean": [-0.45, -0.35],
-                        "Cdl": [1e-6, 5e-4],
+                        "Cdl": [1e-6, 1e-4],
                         "gamma": [1e-11, 2e-10],
-                        "Ru": [1, 2e3],
-                        "E0_std":[1e-3, 0.09],
+                        "Ru": [1, 3e3],
+                        "E0_std":[1e-3, 0.12],
                         "CdlE1":[-1e-2, 1e-2],
                         "CdlE2":[-1e-3, 1e-3],
                         "CdlE3":[-5e-5, 5e-5],
@@ -57,11 +57,11 @@ for i in range(0,2):#len(frequencies)):
                         }
 
     slurm_class.GH_quadrature=True
-    slurm_class.dispersion_bins=[25]
+    slurm_class.dispersion_bins=[35]
     slurm_class.Fourier_fitting=True
     slurm_class.Fourier_window="hanning"
-    slurm_class.top_hat_width=0.25
-    slurm_class.Fourier_function="composite"
+    slurm_class.top_hat_width=0.5
+    slurm_class.Fourier_function="inverse"
     slurm_class.Fourier_harmonics=list(range(4, 10))
     slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","phase", "omega","cap_phase","alpha"]
     slurm_class.transient_removal=3/results_dict["PSV"][frequencies[i]]["omega"]
@@ -75,6 +75,6 @@ for i in range(0,2):#len(frequencies)):
         unchanged_iterations=200,
         check_experiments={"FTACV":{"file":loc+"FTACV/250/"+data_dict["FTACV"][frequencies[i]], "parameters":results_dict["FTACV"]["250"][frequencies[i]]}},
         results_directory=frequencies[i]+"Hz_PSV_8_Fourier",
-        debug=True,
-        run=False
+        debug=False,
+        run=True
     )
