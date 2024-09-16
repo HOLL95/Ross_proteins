@@ -9,3 +9,7 @@ experiments_dict['FTACV']['21_Hz']['280']= {'E_start': np.float64(-0.89008112956
 experiments_dict['FTACV']['21_Hz']['280']= {'E_start': np.float64(-0.8900392326739417), 'E_reverse': np.float64(-0.0006217574272811), 'omega': np.float64(21.42689360258165), 'phase': np.float64(3.770088101350285), 'delta_E': np.float64(0.11428281275681479), 'v': np.float64(0.05953395752776987)}
 experiments_dict['FTACV']['9_Hz']['280']= {'E_start': np.float64(-0.8900244598847762), 'E_reverse': np.float64(-0.0006520099910067856), 'omega': np.float64(9.104193706642272), 'phase': np.float64(5.682042161157082), 'delta_E': np.float64(0.22351633655321063), 'v': np.float64(0.059528212300390126)}
 
+experiments_dict['PSV']['21_Hz']['100_osc']= {'Edc': -0.4451549843492726, 'omega': 21.24332547828609, 'phase': 3.7061559843240985, 'delta_E': 0.23032103891330358}
+experiments_dict['PSV']['3_Hz']['100_osc']= {'Edc': -0.44504922351594134, 'omega': 3.0347403892751337, 'phase': 4.4766643586691055, 'delta_E': 0.42921518128386493}
+experiments_dict['PSV']['9_Hz']['100_osc']= {'Edc': -0.4450602562455672, 'omega': 9.104241058699305, 'phase': 4.1018217711950955, 'delta_E': 0.3575878846032547}
+experiments_dict['PSV']['15_Hz']['100_osc']= {'Edc': -0.44510516159029523, 'omega': 15.173801327488201, 'phase': 3.8599820604984774, 'delta_E': 0.28491327761894464}

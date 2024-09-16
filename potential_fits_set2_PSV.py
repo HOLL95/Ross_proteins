@@ -9,7 +9,7 @@ abspath="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated"
 
 Blankloc="Blank"
 experiments=["FTACV", "PSV"]
-freqs=["3_Hz", "21_Hz"]
+freqs=["9_Hz", "15_Hz"]
 
 for i in range(1, 2):
     if experiments[i]=="FTACV":
@@ -36,11 +36,17 @@ for i in range(1, 2):
             except:
                 continue
             data=np.loadtxt(directory+"/"+files[m])
+            
             time=data[:,0]
+            
+            
             current=data[:,1]
             potential=data[:,2]
-            
-          
+            freq=sci.get_frequency(time, current)
+            first_idx=np.where(time>2/freq)
+            time=time[first_idx]
+            current=current[first_idx]
+            potential=potential[first_idx]
 
             
                 
@@ -49,7 +55,7 @@ for i in range(1, 2):
                                                                             return_sim_values=True, 
                                                                             sinusoidal_phase=False,
                                                                             sigma=0.075,
-                                                                            runs=20
+                                                                            runs=5
                                                                             )
             #p_est=sci.infer.get_input_parameters(time, potential, current,experiments[i], optimise=False)
             print("experiments_dict['{0}']['{1}']['{2}']=".format(experiments[i], pk, tk), p_inf)

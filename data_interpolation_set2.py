@@ -26,8 +26,9 @@ for j in range(0, len(files)):
     current=decimate(data[:,4],3)
     if "PSV" in files[j]:
         loc=["PSV"]
-        continue
+        
     else:
+        continue
         loc=["FTACV"]
         if "280_mV" in files[j]:
             loc +=["280"]
@@ -53,8 +54,8 @@ for j in range(0, len(files)):
     #plt.show()
     new_file_idx=files[j].index(".csv")
     new_file=files[j][:new_file_idx]+".txt"
-    np.savetxt("/".join([saved]+loc+[new_file]), np.column_stack((interped_time, current, potential)))
-    np.savetxt("/".join([saved2]+loc+[new_file]), np.column_stack((time, current, potential)))
+    np.savetxt("/".join([saved]+loc+[new_file]), np.column_stack((interped_time, interped_current, interped_potential)))
+    #np.savetxt("/".join([saved2]+loc+[new_file]), np.column_stack((time, current, potential)))
    
               
            
