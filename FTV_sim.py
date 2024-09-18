@@ -20,7 +20,7 @@ frequencies=["3","9","15","21"]
 amplitudes=["80","250"]
 for i in range(0, len(frequencies)):
     
-    for j in range(1, len(amplitudes)):
+    for j in range(0, len(amplitudes)):
         amp=amplitudes[j]
         dictionary={key:results_dict["FTACV"][amp][frequencies[i]][key] for key in results_dict["FTACV"][amp][frequencies[i]].keys() if "phase_" not in key}
         dictionary["Temp"]=298
@@ -37,7 +37,7 @@ for i in range(0, len(frequencies)):
                             "Cdl": [1e-5, 1e-3],
                             "gamma": [1e-11, 1e-9],
                             "Ru": [1, 1e3],
-                            "E0_std":[1e-3, 0.06],
+                            "E0_std":[1e-3, 0.1],
                             "CdlE1":[-3e-3, 3e-3],
                             "CdlE2":[-1e-4, 1e-4],
                             "CdlE3":[-5e-6, 5e-6],
@@ -58,6 +58,10 @@ for i in range(0, len(frequencies)):
         init_vals=[ -0.4279614654, 0.0588029292,     204.7075623261,   5.9999383440e-11,         721.1722868916,   1.0053023051e-04, -7.9868011396e-03, 4.1358395131e-06,  9.9973984312e-06, dictionary["omega"], dictionary["phase"],  dictionary["phase"],    0.5685817265,]
         #init_vals=[-0.3958839798, 0.0617198064,     236.6690962229,   1.6344329209e-11,         858.1772287593,   3.0016775963e-04, -8.0218142767e-03*0, 4.8175344829e-04*0,  3.9342917225e-06*0, dictionary["omega"], dictionary["phase"],  dictionary["phase"],    0.4739785866,]
         init_vals=[-0.4352443352, 0.0609219863,     400.6347259279,   4.4072157623e-11,         59.950040209,     6.1135543667e-05, -8.5551500437e-03, 9.9634405758e-04,  2.6833205674e-05,  dictionary["omega"], dictionary["phase"],  dictionary["phase"],      0.5310420538,]
+        #slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
+        
+        init_vals=[ -0.4300707971, 0.0400286827,     335.0931379793,   4.9995656981e-11,         50.9878516972,    9.6151652803e-05, -4.2647495067e-05, 4.9986311987e-05,  2.1174990364e-07,  2.7895549111, 0,0, 0.4599594539,]
+        init_vals=[-0.4358444576, 0.0400020508,     499.2308820791,   4.9999992590e-11,         1.0197771743,     9.9994944115e-05, 2.3072684826e-03,  9.9999056053e-05,  -4.9756151692e-06, 2.78974092, 0,0,   0.5228125818,]
         data=np.loadtxt("/home/henryll/Documents/Experimental_data/ForGDrive/Interpolated/FTACV/{1}/FTACV_m4D2_PGE_59.60_mV_s-1_{0}_Hz_{1}_mV.txt".format(frequencies[i], amp))
         time=data[:,0]
         potential=data[:,2]

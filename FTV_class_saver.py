@@ -24,57 +24,41 @@ data_dict={"FTACV":{"3":"FTACV_m4D2_PGE_59.60_mV_s-1_3_Hz_250_mV.txt",
                 "21":"PSV_m4D2_PGE_21_Hz_100_osc.txt"}}
 loc="/users/hll537/Experimental_data/Interpolated/"
 frequencies=["3","9","15","21"]
-for i in range(0,2):#len(frequencies)):
-    for dictionary in [results_dict["PSV"][frequencies[i]], results_dict["FTACV"]["250"][frequencies[i]]]:
-     dictionary["Temp"]=298
-     dictionary["N_elec"]=1
-     dictionary["Surface_coverage"]=1e-11
-     dictionary["area"]=0.07
+amps=["80","250"]
+for i in range(0,len(frequencies)):
+    for j in range(0, len(amps)):
+        amp=amps[j]
+        for dictionary in [results_dict["PSV"][frequencies[i]], results_dict["FTACV"][amp][frequencies[i]]]:
+            dictionary["Temp"]=298
+            dictionary["N_elec"]=1
+            dictionary["Surface_coverage"]=1e-11
+            dictionary["area"]=0.07
 
-    dictionary=results_dict["PSV"][frequencies[i]]
-    dictionary["Temp"]=298
-    dictionary["area"]=0.07
-    dictionary["N_elec"]=1
-    dictionary["Surface_coverage"]=1e-10
-    slurm_class = sci.SingleSlurmSetup(
-        "PSV",
-        results_dict["PSV"][frequencies[i]],
-        phase_function="constant"
-    )
-    slurm_class.boundaries = {"k0": [1e-3, 3000], 
-                        "E0_mean": [-0.45, -0.35],
-                        "Cdl": [1e-6, 1e-4],
-                        "gamma": [1e-11, 2e-10],
-                        "Ru": [1, 3e3],
-                        "E0_std":[1e-3, 0.12],
-                        "CdlE1":[-1e-2, 1e-2],
-                        "CdlE2":[-1e-3, 1e-3],
-                        "CdlE3":[-5e-5, 5e-5],
-                        "alpha":[0.4, 0.6],
-                        "phase":[0,2*math.pi],
-                        "cap_phase":[0, 2*math.pi],
-                        "omega":[0.8*results_dict["PSV"][frequencies[i]]["omega"], 1.2*results_dict["PSV"][frequencies[i]]["omega"]],
-                        }
+        slurm_class = sci.SingleSlurmSetup(
+            "FTACV",
+            results_dict["FTACV"][amp][frequencies[i]],
+            phase_function="constant"
+        )
+        slurm_class.boundaries = {"k0": [100, 500], 
+                            "E0_mean": [-0.45, -0.37],
+                            "Cdl": [1e-6, 1e-4],
+                            "gamma": [1e-11, 5e-11],
+                            "Ru": [1, 500],
+                            "E0_std":[0.04, 0.09],
+                            "CdlE1":[-3e-3, 3e-3],
+                            "CdlE2":[-1e-4, 1e-4],
+                            "CdlE3":[-5e-6, 5e-6],
+                            "alpha":[0.4, 0.6],
+                            "phase":[0,2*math.pi/2],
+                            "omega":[0.8*dictionary["omega"], 1.2*dictionary["omega"]],
+                            }
 
-    slurm_class.GH_quadrature=True
-    slurm_class.dispersion_bins=[35]
-    slurm_class.Fourier_fitting=True
-    slurm_class.Fourier_window="hanning"
-    slurm_class.top_hat_width=0.5
-    slurm_class.Fourier_function="inverse"
-    slurm_class.Fourier_harmonics=list(range(4, 10))
-    slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","phase", "omega","cap_phase","alpha"]
-    slurm_class.transient_removal=3/results_dict["PSV"][frequencies[i]]["omega"]
-
-    slurm_class.setup(
-        datafile=loc+"PSV/"+data_dict["PSV"][frequencies[i]],
-        cpu_ram="8G",
-        time="0-08:00:00",
-        runs=20, 
-        threshold=1e-8, 
-        unchanged_iterations=200,
-        check_experiments={"FTACV":{"file":loc+"FTACV/250/"+data_dict["FTACV"][frequencies[i]], "parameters":results_dict["FTACV"]["250"][frequencies[i]]}},
-        results_directory=frequencies[i]+"Hz_PSV_8_Fourier",
-        debug=False,
-        run=True
-    )
+        slurm_class.GH_quadrature=True
+        slurm_class.dispersion_bins=[25]
+        slurm_class.Fourier_fitting=True
+        slurm_class.Fourier_window="hanning"
+        slurm_class.top_hat_width=0.25
+        slurm_class.Fourier_function="abs"
+        slurm_class.Fourier_harmonics=list(range(3, 10))
+        slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
+        slurm_class.save_class("FTV_sims/FTV_simulator_{0}_Hz_{1}_mv.json".format(frequencies[i], amp))
