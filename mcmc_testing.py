@@ -50,28 +50,32 @@ for i in range(0, len(frequencies)):
                             }
 
         slurm_class.GH_quadrature=True
-        slurm_class.dispersion_bins=[30]
+        slurm_class.dispersion_bins=[15]
         slurm_class.Fourier_fitting=True
         slurm_class.top_hat_width=0.25
         slurm_class.Fourier_function="abs"
         slurm_class.Fourier_harmonics=list(range(3, 10))
         slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","phase", "cap_phase","alpha"]
-        init_vals=[-0.4047536814, 0.0507809781,     200.7317584608,   3.5120367467e-11,         351.5388710328,   1.0994474853e-05, 4.1186260389e-04,  7.9306701013e-05*0,  2.2053550783e-06*0,  3.0402283637,  0,0,    0.5438261746,]
+        init_vals=[-0.4047536814, 0.0507809781,     200.7317584608,   3.5120367467e-11,         351.5388710328,   1.0994474853e-05, 4.1186260389e-04*0,  7.9306701013e-05*0,  2.2053550783e-06*0,  3.0402283637,  0,0,    0.5438261746]
         time=slurm_class.dim_t(slurm_class.calculate_times(sampling_factor=200))
         voltage=slurm_class.get_voltage(time, dimensional=True)
         
         #plt.plot(time, voltage)
         #plt.show()
-        start=ti.time()
-        test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(init_vals, time))
-        print(ti.time()-start,"sequential")
+        
+        
+       
         slurm_class.save_class("Submission/test.json")
         test_class=sci.LoadSingleExperiment("Submission/test.json", class_type="mcmc")
         start=ti.time()
         mcmc_test=test_class.dim_i(test_class.Dimensionalsimulate(init_vals, time))
         print(ti.time()-start,"paralell")
-        plt.plot(time, test)
-        plt.plot(time, mcmc_test)
-        plt.show()
+        #start=ti.time()
+        #test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(init_vals, time))
+        #print(ti.time()-start,"sequential")
+        #plt.plot(time, mcmc_test)
+        #plt.plot(time, test)
+        #plt.show()
+        test_class.run(time, mcmc_test, starting_point=init_vals)
        
    
