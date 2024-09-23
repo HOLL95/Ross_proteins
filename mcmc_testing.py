@@ -3,6 +3,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import time as ti
+from pints.plot import trace
 results_dict={"FTACV":{"80":{}, "250":{}}, "PSV":{}}
 results_dict['FTACV']['80']['3']={'E_start': np.float64(-0.8006475758896721), 'E_reverse': np.float64(-0.0005643140832054527), 'omega': np.float64(2.7893933220163056), 'phase': np.float64(6.0963661768311965), 'delta_E': np.float64(0.07773033393989036), 'v': np.float64(0.0553759383170455), 'phase_delta_E': np.float64(0.017041489489115325), 'phase_omega': np.float64(0.1), 'phase_phase': np.float64(4.450487852784928)}
 results_dict['FTACV']['80']['9']={'E_start': np.float64(-0.8006117990463852), 'E_reverse': np.float64(-0.0005378379312415138), 'omega': np.float64(8.368818213300784), 'phase': np.float64(5.724833637340166), 'delta_E': np.float64(0.06684109310228693), 'v': np.float64(0.05537358012592774), 'phase_delta_E': np.float64(0.0008055595726608189), 'phase_omega': np.float64(395.718786830266), 'phase_phase': np.float64(1.3981535550876787)}
@@ -50,7 +51,7 @@ for i in range(0, len(frequencies)):
                             }
 
         slurm_class.GH_quadrature=True
-        slurm_class.dispersion_bins=[15]
+        slurm_class.dispersion_bins=[5]
         slurm_class.Fourier_fitting=True
         slurm_class.top_hat_width=0.25
         slurm_class.Fourier_function="abs"
@@ -68,7 +69,8 @@ for i in range(0, len(frequencies)):
         slurm_class.save_class("Submission/test.json")
         test_class=sci.LoadSingleExperiment("Submission/test.json", class_type="mcmc")
         start=ti.time()
-        mcmc_test=test_class.dim_i(test_class.Dimensionalsimulate(init_vals, time))
+        synthetic=test_class.dim_i(slurm_class.Dimensionalsimulate(init_vals, time))
+        mcmc_test=sci._utils.add_noise(synthetic, 0.05*max(synthetic))
         print(ti.time()-start,"paralell")
         #start=ti.time()
         #test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(init_vals, time))
@@ -76,6 +78,7 @@ for i in range(0, len(frequencies)):
         #plt.plot(time, mcmc_test)
         #plt.plot(time, test)
         #plt.show()
-        test_class.run(time, mcmc_test, starting_point=init_vals)
-       
+        chains=test_class.run(time, mcmc_test, starting_point=init_vals, samples=5000, num_chains=1, transformation={"log":["k0","Ru","gamma"]}, init_sigma=0.15)
+        trace(chains)
+        plt.show()
    
