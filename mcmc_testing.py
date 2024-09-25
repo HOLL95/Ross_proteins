@@ -78,7 +78,7 @@ for i in range(0, len(frequencies)):
         #plt.plot(time, mcmc_test)
         #plt.plot(time, test)
         #plt.show()
-        chains=test_class.run(time, mcmc_test, starting_point=init_vals, samples=5000, num_chains=1, transformation={"log":["k0","Ru","gamma"]}, init_sigma=0.15)
+        chains=test_class.run(time, mcmc_test, starting_point=init_vals, samples=5000, num_chains=1, transformation={"log":["k0","Ru","gamma"]}, sigma0=0.5)
         trace(chains)
         plt.show()
    
