@@ -50,7 +50,7 @@ sw_class.boundaries={
 "Cdl":[1e-3, 0.5],
 "alpha":[0.4, 0.6]
 }
-sw_class.dispersion_bins=[30]print(results)
+sw_class.dispersion_bins=[30]
 
 sw_class.optim_list=["E0","k0","gamma","Cdl","alpha"]
 results=sw_class.Current_optimisation(sw_class._internal_memory["SW_params"]["b_idx"], sw_class.nondim_i(data_current), unchanged_iterations=200, tolerance=1e-8, dimensional=False, parallel=True)

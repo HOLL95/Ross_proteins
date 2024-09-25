@@ -51,13 +51,22 @@ for i in range(0, len(frequencies)):
                             }
 
         slurm_class.GH_quadrature=True
-        slurm_class.dispersion_bins=[5]
+        slurm_class.dispersion_bins=[15]
         slurm_class.Fourier_fitting=True
         slurm_class.top_hat_width=0.25
         slurm_class.Fourier_function="abs"
         slurm_class.Fourier_harmonics=list(range(3, 10))
-        slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","phase", "cap_phase","alpha"]
+        params= ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","phase", "cap_phase","alpha"]
         init_vals=[-0.4047536814, 0.0507809781,     200.7317584608,   3.5120367467e-11,         351.5388710328,   1.0994474853e-05, 4.1186260389e-04*0,  7.9306701013e-05*0,  2.2053550783e-06*0,  3.0402283637,  0,0,    0.5438261746]
+        fit_params=["E0_mean","E0_std","k0","Ru"]
+        
+        fixed_params=dict(zip(params, init_vals))
+        sim_params=[fixed_params[param] for param in fit_params]
+        for param in fit_params:
+            del fixed_params[param]
+        slurm_class.fixed_parameters=fixed_params
+        slurm_class.optim_list=fit_params
+            
         time=slurm_class.dim_t(slurm_class.calculate_times(sampling_factor=200))
         voltage=slurm_class.get_voltage(time, dimensional=True)
         
@@ -65,11 +74,11 @@ for i in range(0, len(frequencies)):
         #plt.show()
         
         
-       
+
         slurm_class.save_class("Submission/test.json")
         test_class=sci.LoadSingleExperiment("Submission/test.json", class_type="mcmc")
         start=ti.time()
-        synthetic=test_class.dim_i(slurm_class.Dimensionalsimulate(init_vals, time))
+        synthetic=test_class.dim_i(slurm_class.Dimensionalsimulate(sim_params, time))
         mcmc_test=sci._utils.add_noise(synthetic, 0.05*max(synthetic))
         print(ti.time()-start,"paralell")
         #start=ti.time()
@@ -78,7 +87,7 @@ for i in range(0, len(frequencies)):
         #plt.plot(time, mcmc_test)
         #plt.plot(time, test)
         #plt.show()
-        chains=test_class.run(time, mcmc_test, starting_point=init_vals, samples=5000, num_chains=1, transformation={"log":["k0","Ru","gamma"]}, sigma0=0.5)
+        chains=test_class.run(time, mcmc_test, starting_point=sim_params, samples=1200, num_chains=2, transformation={"log":["k0","Ru","gamma"]}, sigma0=0.5)
         trace(chains)
         plt.show()
    
