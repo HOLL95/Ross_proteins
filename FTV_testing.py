@@ -50,7 +50,7 @@ for i in range(0,len(frequencies)):
                             }
 
         slurm_class.GH_quadrature=True
-        slurm_class.dispersion_bins=[20]
+        slurm_class.dispersion_bins=[30]
         slurm_class.Fourier_fitting=True
         slurm_class.Fourier_window="hanning"
         slurm_class.top_hat_width=0.25
@@ -78,11 +78,11 @@ for i in range(0,len(frequencies)):
          fixie[key]=start_dict[key]
         slurm_class.fixed_parameters=fixie
         slurm_class.optim_list=["E0_mean","E0_std"]#"k0", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
-        
+        newloc="/users/hll537/Experimental_data/for_saving"
         new_start=[start_dict[x] for x in slurm_class._optim_list]+[start[-1]]
         print(new_start)
         import matplotlib.pyplot as plt
-        data=np.loadtxt(loc+"FTACV/{0}/".format(amp)+file)
+	np.savetxt(os.path.join(newloc, file),data)
         current=data[:,1]
         time=data[:,0]
         problem=pints.SingleOutputProblem(self, slurm_class.nondim_t(time), slurm_class.nondim_i(current))
@@ -101,7 +101,7 @@ for i in range(0,len(frequencies)):
             #check_experiments={"PSV":{"file":loc+"PSV/"+data_dict["PSV"][frequencies[i]], "parameters":results_dict["PSV"][frequencies[i]]}},
             results_directory=frequencies[i]+"_FTV_Fourier_synthetic_10_"+amp,
             method="sampling",
-            debug=True,
-            run=True,
+            debug=False,
+            run=False,
             sigma0=None,
         )

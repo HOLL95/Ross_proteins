@@ -48,7 +48,7 @@ for i in range(0,len(frequencies)):
             phase_function="constant",            
         )
         slurm_class.boundaries = {"k0": [5, 5000], 
-                            "E0_mean": [-0.45, -0.37],
+                            "E0_mean": [-0.49, -0.37],
                             "Cdl": [1e-6, 5e-4],
                             "gamma": [1e-11, 8e-10],
                             "Ru": [0.1, 4000],
@@ -70,7 +70,29 @@ for i in range(0,len(frequencies)):
         slurm_class.Fourier_harmonics=list(range(4, 10))
         slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
         file=[x for x in files if frequencies[i] in x][0]
-      
+        cmaes_loc="/users/hll537/Ross_proteins/inference_results_2_4"
+        savefile=frequencies[i]+"_FTV_Fourier_4_"+amp
+        dirnames=os.listdir(os.path.join(cmaes_loc, savefile))
+        table_loc=os.path.join(cmaes_loc, savefile, [x for x in dirnames if "Pooled" in x][0])
+        start=sci._utils.read_param_table(os.path.join(table_loc,"Rounded_table.txt"))[0]
+        times=slurm_class.calculate_times(dimensional=False)
+        #mcmc_test=slurm_class.dim_i(slurm_class.simulate(start[:-1], times))
+        #potential=slurm_class.get_voltage(times, dimensional=True)
+        start_dict=dict(zip(slurm_class._optim_list,start[:-1]))
+        
+        #synthetic_file=np.savetxt("{0}_{1}_synthetic.txt".format(frequencies[i], amp), np.column_stack((slurm_class.dim_t(times), sci._utils.add_noise(mcmc_test, 0.05*max(mcmc_test)), potential)))
+        #print(start)
+        
+        keys=["k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
+        fixie={}
+        for key in keys:
+
+         fixie[key]=start_dict[key]
+        slurm_class.fixed_parameters=fixie
+        slurm_class.optim_list=["E0_mean","E0_std"]#"k0", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
+       
+        new_start=[start_dict[x] for x in slurm_class._optim_list]+[start[-1]]
+        print(new_start)
         import matplotlib.pyplot as plt
         data=np.loadtxt(loc+"FTACV/{0}/".format(amp)+file)
         current=data[:,1]
@@ -92,4 +114,20 @@ for i in range(0,len(frequencies)):
                             #Trumpet_data={"time":time, "current":trumpet_test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
                             plot_func=np.abs, hanning=True,  xlabel="Time (s)", ylabel="Current ($\\mu$A)", remove_xaxis=True)
         
-        plt.show()
+        slurm_class.setup(
+            datafile=loc+"FTACV/{0}/".format(amp)+file,#"{0}_{1}_synthetic.txt".format(frequencies[i], amp)
+            cpu_ram="12G",
+            time="0-48:00:00",
+            num_chains=1, 
+            samples=30000,
+            #transformation={"log":{"k0", "Ru"}},
+            starting_point=new_start,
+            #CMAES_results_dir=os.path.join(cmaes_loc, savefile, [x for x in dirnames if "Pooled" in x][0]),
+            #check_experiments={"PSV":{"file":loc+"PSV/"+data_dict["PSV"][frequencies[i]], "parameters":results_dict["PSV"][frequencies[i]]}},
+            results_directory=frequencies[i]+"_FTV_Fourier_data_13_"+amp,
+            fixed_sigma=True,
+            method="sampling",
+            debug=False,
+            run=True,
+            sigma0=None,
+        )
