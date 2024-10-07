@@ -36,7 +36,7 @@ for i in range(0,len(frequencies)):
             phase_function="constant",            
         )
         slurm_class.boundaries = {"k0": [5, 5000], 
-                            "E0_mean": [-0.45, -0.37],
+                            "E0_mean": [-0.49, -0.37],
                             "Cdl": [1e-6, 5e-4],
                             "gamma": [1e-11, 8e-10],
                             "Ru": [0.1, 4000],
@@ -64,8 +64,8 @@ for i in range(0,len(frequencies)):
         table_loc=os.path.join(cmaes_loc, savefile, [x for x in dirnames if "Pooled" in x][0])
         start=sci._utils.read_param_table(os.path.join(table_loc,"Rounded_table.txt"))[0]
         times=slurm_class.calculate_times(dimensional=False)
-        mcmc_test=slurm_class.dim_i(slurm_class.simulate(start[:-1], times))
-        potential=slurm_class.get_voltage(times, dimensional=True)
+        #mcmc_test=slurm_class.dim_i(slurm_class.simulate(start[:-1], times))
+        #potential=slurm_class.get_voltage(times, dimensional=True)
         start_dict=dict(zip(slurm_class._optim_list,start[:-1]))
         
         #synthetic_file=np.savetxt("{0}_{1}_synthetic.txt".format(frequencies[i], amp), np.column_stack((slurm_class.dim_t(times), sci._utils.add_noise(mcmc_test, 0.05*max(mcmc_test)), potential)))
@@ -87,16 +87,16 @@ for i in range(0,len(frequencies)):
         time=data[:,0]
         
         slurm_class.setup(
-            datafile=loc+"FTACV/{0}/".format(amp)+file,#"{0}_{1}_synthetic.txt".format(frequencies[i], amp),#
+            datafile=loc+"FTACV/{0}/".format(amp)+file,#"{0}_{1}_synthetic.txt".format(frequencies[i], amp)
             cpu_ram="12G",
             time="0-48:00:00",
-            num_chains=3, 
-            samples=10000,
+            num_chains=1, 
+            samples=30000,
             #transformation={"log":{"k0", "Ru"}},
             starting_point=new_start,
             #CMAES_results_dir=os.path.join(cmaes_loc, savefile, [x for x in dirnames if "Pooled" in x][0]),
             #check_experiments={"PSV":{"file":loc+"PSV/"+data_dict["PSV"][frequencies[i]], "parameters":results_dict["PSV"][frequencies[i]]}},
-            results_directory=frequencies[i]+"_FTV_Fourier_data_11_"+amp,
+            results_directory=frequencies[i]+"_FTV_Fourier_data_13_"+amp,
             fixed_sigma=True,
             method="sampling",
             debug=False,
