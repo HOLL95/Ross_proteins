@@ -1,8 +1,10 @@
 import Surface_confined_inference as sci
 import numpy as np
 import math
+import pints
+import copy
 import os
-import matplotlib.pyplot as plt
+from matplotlib import cm
 experiments_dict={"FTACV":{"3_Hz":{}, "9_Hz":{},"15_Hz":{}, "21_Hz":{}}}
 experiments_dict['FTACV']['3_Hz']['80']= {'E_start': np.float64(-0.8902481705989678), 'E_reverse': np.float64(-0.0005663458462876747), 'omega': np.float64(3.0347196895539086), 'phase': np.float64(6.059035018632212), 'delta_E': np.float64(0.07653233662675293), 'v': np.float64(0.05954572063421371)}
 experiments_dict['FTACV']['15_Hz']['80']= {'E_start': np.float64(-0.8902605797349086), 'E_reverse': np.float64(-0.0005573884536691498), 'omega': np.float64(15.173689418589497), 'phase': np.float64(5.448960410224393), 'delta_E': np.float64(0.051806426739964634), 'v': np.float64(0.059547949680300125)}
@@ -17,23 +19,21 @@ results_dict=experiments_dict
 
 
 loc="/users/hll537/Experimental_data/set2/"
-loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/FTACV"
+loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/"
 
-frequencies=[x+"_Hz" for x in ["3","9","15"]]
+frequencies=[x+"_Hz" for x in ["3","9","15","21"]]
+amps=["80","280"]
 best_fits=dict(zip(frequencies,[
     [-0.4244818992, 0.0417143285,     4.9920932937e+03, 1.8134851259e-10,         2.5644285241e+03, 6.6014432067e-05, -4.6443012010e-03, -1.2340727286e-03, -1.4626502188e-05, 3.0346809949,  0.524292126,],
     [-0.4205770335, 0.0650104188,     1.8457772599e+03, 1.1283378372e-10,         764.9843288034,   9.9054277034e-05, -3.5929255146e-03, -7.1997893984e-04, -5.3937670998e-06, 9.1041692039,  0.4770065713,     ],
     [-0.4225575542, 0.0765111705,     111.5784183264,   7.7951293716e-11,         184.9121615528,   9.9349322658e-05, -1.6383464471e-03, -3.3463983363e-04, -7.5051594548e-06, 15.1735928635, 0.4006210586, ]
 
 ]))
-amps=["80","280"]
 for i in range(0,len(frequencies)):
     
     for j in range(1, len(amps)):
         amp=amps[j]
-        full_loc=os.path.join(loc,amp)
-        files=os.listdir(full_loc)
-        filename=[file for file in files if frequencies[i] and amp+"_mV" in file][0]
+        files=os.listdir(loc+"FTACV/"+amp)
         print(type(results_dict["FTACV"][frequencies[i]][amp]))
         for dictionary in [results_dict["FTACV"][frequencies[i]][str(amp)]]:
             dictionary["Temp"]=278
@@ -43,7 +43,8 @@ for i in range(0,len(frequencies)):
 
         slurm_class = sci.RunSingleExperimentMCMC(
             "FTACV",
-            results_dict["FTACV"][frequencies[i]][amp],          
+            results_dict["FTACV"][frequencies[i]][amp],
+            phase_function="constant",            
         )
         slurm_class.boundaries = {"k0": [5, 5000], 
                             "E0_mean": [-0.45, -0.37],
@@ -60,32 +61,65 @@ for i in range(0,len(frequencies)):
                             }
 
         slurm_class.GH_quadrature=True
-        slurm_class.dispersion_bins=[30]
+        slurm_class.dispersion_bins=[20]
         slurm_class.Fourier_fitting=True
+        slurm_class.Fourier_window="hanning"
         slurm_class.top_hat_width=0.25
         slurm_class.Fourier_function="abs"
-        slurm_class.Fourier_harmonics=list(range(3, 10))
-        slurm_class.fixed_parameters={"phase":0}
-        slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega", "alpha"]
-
-        data=np.loadtxt(os.path.join(full_loc, filename))
+        slurm_class.Fourier_harmonics=list(range(4, 10))
+        slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
+        file=[x for x in files if frequencies[i] in x][0]
+      
+        import matplotlib.pyplot as plt
+        data=np.loadtxt(loc+"FTACV/{0}/".format(amp)+file)
+        current=data[:,1]
         time=data[:,0]
         potential=data[:,2]
-        current=data[:,1]
-
-        test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[frequencies[i]], time))
-        times=slurm_class.calculate_times(dimensional=True)
-        best_fits[frequencies[i]][2]=16
-        trumpet_test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[frequencies[i]], time))
-       
-        axes=sci.plot.plot_harmonics(Data_data={"time":time, "current":current*1e6, "potential":potential, "harmonics":list(range(2, 10))},
-                                Sim_data={"time":time, "current":test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
-                                Trumpet_data={"time":time, "current":trumpet_test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
-                                plot_func=np.abs, hanning=True,  xlabel="Time (s)", ylabel="Current ($\\mu$A)", remove_xaxis=True)
-        #sci.plot.generate_harmonics(time, test, one_sided=True, hanning=False, save_csv="{0}_harmonics.csv".format(frequencies[i]))
-        axes[0].set_title("{1} mV {0} Hz".format(frequencies[i], amp))
+        problem=pints.SingleOutputProblem(slurm_class, slurm_class.nondim_t(time), slurm_class.nondim_i(current))
+        num_points=51
+        E0_mean_values=sci._utils.linspace_with_midpoint(-0.45, -0.37, best_fits[frequencies[i]][0], num_points)
+        E0_std_values=sci._utils.linspace_with_midpoint(0.03, 0.05, best_fits[frequencies[i]][1], num_points)
+        print(E0_mean_values)
+        print(E0_std_values)
+        likelihood=sci.FourierGaussianLogLikelihood(problem)
+        likelihood.test(best_fits[frequencies[i]])
         plt.show()
+        test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[frequencies[i]], time))
+
+        axes=sci.plot.plot_harmonics(Data_data={"time":time, "current":current*1e6,  "harmonics":list(range(2, 10))},
+                            Sim_data={"time":time, "current":test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
+                            #Trumpet_data={"time":time, "current":trumpet_test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
+                            plot_func=np.abs, hanning=True,  xlabel="Time (s)", ylabel="Current ($\\mu$A)", remove_xaxis=True)
+        
+        plt.show()
+        """results=np.zeros((num_points, num_points))
+        values=copy.deepcopy(best_fits[frequencies[i]])
+        for m in range(0, len(E0_mean_values)):
+            values[0]=E0_mean_values[m]
+            for z in range(0, len(E0_std_values)):
+                values[1]=E0_std_values[z]
+                results[m,z]=likelihood(values+[17.1])
+        
+
        
-    #fig=plt.gcf()
-    #fig.set_size_inches(5, 6)
-    #fig.savefig("Initial_plots/Init_results/{0}_Hz_FTV_harmonics".format(frequencies[i]), dpi=500)
+       
+        X, Y = np.meshgrid(E0_mean_values, E0_std_values)
+        full_data=np.array([X,Y,results])
+        np.save("Profile_likelihood", full_data)"""
+        saved_results=np.load("Profile_likelihood.npy")
+        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        X=saved_results[0,:,:]
+        Y=saved_results[1,:,:]
+        Z=np.log10(abs(saved_results[2,:,:]))
+        surf = ax.plot_surface(X, Y, Z,cmap=cm.coolwarm,
+                       linewidth=0, antialiased=True)
+        ax.set_xlabel("E0 mean (V)")
+        ax.set_ylabel("E0 std (V)")
+        ax.set_zlabel("$\\log_{10}$(|Likelihood|)")
+        plt.show()
+        #plt.plot(slurm_class.FTsimulate(best_fits[frequencies[i]], time))
+        #plt.plot(likelihood._FTvalues)
+        #plt.show()
+       
+
+
