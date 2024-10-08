@@ -115,7 +115,7 @@ for i in range(0,len(frequencies)):
                        linewidth=0, antialiased=True)
         ax.set_xlabel("E0 mean (V)")
         ax.set_ylabel("E0 std (V)")
-        ax.set_zlabel("$\\log_{10}$(|Likelihood|)")
+        ax.set_zlabel("$\\log_{10}$(|Likelihood|)   ")
         plt.show()
         #plt.plot(slurm_class.FTsimulate(best_fits[frequencies[i]], time))
         #plt.plot(likelihood._FTvalues)
