@@ -20,7 +20,7 @@ results_dict=experiments_dict
 
 
 loc="/users/hll537/Experimental_data/set2/"
-loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/"
+#loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/"
 
 frequencies=[x+"_Hz" for x in ["3","9","15","21"]]
 amps=["80","280"]
@@ -42,7 +42,7 @@ for i in range(0,len(frequencies)):
             dictionary["Surface_coverage"]=1e-10
             dictionary["area"]=0.07
 
-        slurm_class = sci.RunSingleExperimentMCMC(
+        slurm_class = sci.SingleSlurmSetup(
             "FTACV",
             results_dict["FTACV"][frequencies[i]][amp],
             phase_function="constant",            
@@ -100,6 +100,7 @@ for i in range(0,len(frequencies)):
         potential=data[:,2]
         problem=pints.SingleOutputProblem(slurm_class, slurm_class.nondim_t(time), slurm_class.nondim_i(current))
         num_points=51
+        """
         E0_mean_values=sci._utils.linspace_with_midpoint(-0.45, -0.37, best_fits[frequencies[i]][0], num_points)
         E0_std_values=sci._utils.linspace_with_midpoint(0.03, 0.05, best_fits[frequencies[i]][1], num_points)
         print(E0_mean_values)
@@ -113,7 +114,7 @@ for i in range(0,len(frequencies)):
                             Sim_data={"time":time, "current":test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
                             #Trumpet_data={"time":time, "current":trumpet_test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
                             plot_func=np.abs, hanning=True,  xlabel="Time (s)", ylabel="Current ($\\mu$A)", remove_xaxis=True)
-        
+        """
         slurm_class.setup(
             datafile=loc+"FTACV/{0}/".format(amp)+file,#"{0}_{1}_synthetic.txt".format(frequencies[i], amp)
             cpu_ram="12G",
@@ -124,10 +125,10 @@ for i in range(0,len(frequencies)):
             starting_point=new_start,
             #CMAES_results_dir=os.path.join(cmaes_loc, savefile, [x for x in dirnames if "Pooled" in x][0]),
             #check_experiments={"PSV":{"file":loc+"PSV/"+data_dict["PSV"][frequencies[i]], "parameters":results_dict["PSV"][frequencies[i]]}},
-            results_directory=frequencies[i]+"_FTV_Fourier_data_13_"+amp,
+            results_directory=frequencies[i]+"_FTV_Fourier_data_14_"+amp,
             fixed_sigma=True,
             method="sampling",
             debug=False,
-            run=True,
+            run=False,
             sigma0=None,
         )

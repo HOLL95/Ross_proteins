@@ -7,6 +7,7 @@ import os
 from matplotlib import cm
 import sys
 from pints.plot import trace
+import matplotlib.pyplot as plt
 experiments_dict={"FTACV":{"3_Hz":{}, "9_Hz":{},"15_Hz":{}, "21_Hz":{}}}
 experiments_dict['FTACV']['3_Hz']['80']= {'E_start': np.float64(-0.8902481705989678), 'E_reverse': np.float64(-0.0005663458462876747), 'omega': np.float64(3.0347196895539086), 'phase': np.float64(6.059035018632212), 'delta_E': np.float64(0.07653233662675293), 'v': np.float64(0.05954572063421371)}
 experiments_dict['FTACV']['15_Hz']['80']= {'E_start': np.float64(-0.8902605797349086), 'E_reverse': np.float64(-0.0005573884536691498), 'omega': np.float64(15.173689418589497), 'phase': np.float64(5.448960410224393), 'delta_E': np.float64(0.051806426739964634), 'v': np.float64(0.059547949680300125)}
@@ -21,7 +22,7 @@ results_dict=experiments_dict
 
 
 loc="/users/hll537/Experimental_data/set2/FTACV/280"
-loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/"
+#loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/"
 
 frequencies=[x+"_Hz" for x in ["3","9","15","21"]]
 amps=["80","280"]
@@ -31,10 +32,10 @@ best_fits=dict(zip(frequencies,[
     [-0.4225575542, 0.0765111705,     111.5784183264,   7.7951293716e-11,         184.9121615528,   9.9349322658e-05, -1.6383464471e-03, -3.3463983363e-04, -7.5051594548e-06, 15.1735928635, 0.4006210586,experiments_dict["FTACV"]["15_Hz"]["280"]["phase"],13.6746546358 ]
 
 ]))
-curr_frequency=frequencies[sys.argv[1]]
+curr_frequency=frequencies[int(sys.argv[1])-1]
 files=os.listdir(loc)
 amp="280"
-fileloc=[file for file in files if curr_frequency in file]
+fileloc=os.path.join(loc,[file for file in files if curr_frequency in file][0])
 for dictionary in [results_dict["FTACV"][curr_frequency][str(amp)]]:
     dictionary["Temp"]=278
     dictionary["N_elec"]=1
@@ -44,9 +45,11 @@ for dictionary in [results_dict["FTACV"][curr_frequency][str(amp)]]:
 slurm_class = sci.RunSingleExperimentMCMC(
     "FTACV",
     results_dict["FTACV"][curr_frequency][amp],
-    phase_function="constant",            
+    phase_function="constant",     
+           
 )
-slurm_class.boundaries = {"k0": [5, 5500], 
+slurm_class.num_cpu=30
+slurm_class.boundaries = {"k0": [5, 6000], 
                     "E0_mean": [-0.45, -0.37],
                     "Cdl": [1e-6, 5e-4],
                     "gamma": [1e-11, 8e-10],
@@ -55,8 +58,8 @@ slurm_class.boundaries = {"k0": [5, 5500],
                     "CdlE1":[-1e-2, 1e-2],
                     "CdlE2":[-5e-3, 4e-3],
                     "CdlE3":[-5e-5, 5e-5],
-                    "alpha":[0.4, 0.6],
-                    "phase":[0,2*math.pi/2],
+                    "alpha":[0.38, 0.62],
+                    "phase":[0,2*math.pi+1],
                     "omega":[0.8*dictionary["omega"], 1.2*dictionary["omega"]],
                     }
 
@@ -78,9 +81,9 @@ potential=data[:,2]
 problem=pints.SingleOutputProblem(slurm_class, slurm_class.nondim_t(time), slurm_class.nondim_i(current))
 
 likelihood=sci.FourierGaussianLogLikelihood(problem)
-likelihood.test(best_fits[curr_frequency][:-1])
-plt.show()
-test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[curr_frequency], time))
+#likelihood.test(best_fits[curr_frequency][:-1])
+#plt.show()
+test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[curr_frequency][:-1], time))
 
 axes=sci.plot.plot_harmonics(Data_data={"time":time, "current":current*1e6,  "harmonics":list(range(2, 10))},
                     Sim_data={"time":time, "current":test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
@@ -88,25 +91,49 @@ axes=sci.plot.plot_harmonics(Data_data={"time":time, "current":current*1e6,  "ha
                     plot_func=np.abs, hanning=True,  xlabel="Time (s)", ylabel="Current ($\\mu$A)", remove_xaxis=True)
 
 plt.show()
+start_dict=dict(zip(slurm_class._optim_list,best_fits[curr_frequency][:-1]))
 
+#synthetic_file=np.savetxt("{0}_{1}_synthetic.txt".format(frequencies[i], amp), np.column_stack((slurm_class.dim_t(times), sci._utils.add_noise(mcmc_test, 0.05*max(mcmc_test)), potential)))
+#print(start)
+
+keys=["k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
+fixie={}
+for key in keys:
+
+ fixie[key]=start_dict[key]
+slurm_class.fixed_parameters=fixie
+slurm_class.optim_list=["E0_mean","E0_std"]#"k0", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
+problem=pints.SingleOutputProblem(slurm_class, slurm_class.nondim_t(time), slurm_class.nondim_i(current))
+likelihood=sci.FourierGaussianLogLikelihood(problem)
+new_start=[start_dict[x] for x in slurm_class._optim_list]#+[start[-1]]
+
+
+lower= [slurm_class.boundaries[key][0] for key in slurm_class.optim_list]+[best_fits[curr_frequency][-1]*0.1]
+upper=[slurm_class.boundaries[key][1] for key in slurm_class.optim_list]+[best_fits[curr_frequency][-1]*10]
 log_prior = pints.UniformLogPrior(
-    [slurm_class.boundaries[key][0] for key in slurm_class.optim_list]+[best_fits[curr_frequency][-1]*0.1],
-        [slurm_class.boundaries[key][1] for key in slurm_class.optim_list]+[best_fits[curr_frequency][-1]*0.1],
+   lower,
+   upper,
 )
 log_posterior = pints.LogPosterior(likelihood, log_prior)
-num_chains = 9
-init_norm=np.array(slurm_class.change_norm_group(best_fits[curr_frequency][:-1], "norm"))
-xs=[
-    [ slurm_class.change_norm_group(init_norm*(1+0.1*np.random.rand()), "un_norm") for x in range(0, num_chains)]
-]
-print(xs)
+num_chains = 3
+init_norm=np.array(slurm_class.change_normalisation_group(new_start, "normalise"))
+xs=[ list(slurm_class.change_normalisation_group(init_norm*np.random.uniform(0.95, 1.05, slurm_class.n_parameters()), "un_normalise"))+[best_fits[curr_frequency][-1]] for x in range(0, num_chains)]
+
+
+
+for x in xs:
+    for i in range(0, len(x)):
+        if x[i]<lower[i]:
+            print(slurm_class.optim_list[i], x[i], lower[i])
+        if  x[i]>upper[i]:
+            print(slurm_class.optim_list[i], x[i], upper[i])
 # Create mcmc routine
 mcmc = pints.MCMCController(
-    log_posterior, num_chains, xs, method=pints.EmceeHammerMCMC)
-mcmc.set_max_iterations(100)
+    log_posterior, num_chains, xs, method=pints.HaarioBardenetACMC)
+mcmc.set_max_iterations(10000)
 mcmc.set_log_to_screen(False)
 chains = mcmc.run()
 np.save("MCMC_runs/{0}".format(curr_frequency), chains)
 trace(chains)
 fig=plt.gcf()
-fig.save("MCMC_runs/{0}.png".format(curr_frequency))
+fig.savefig("MCMC_runs/{0}.png".format(curr_frequency))
