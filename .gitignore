@@ -6,3 +6,5 @@ Submission
 FTV_sims/
 *Hz*
 MCMC_runs
+scan_results
+tmp_scan_results

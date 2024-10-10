@@ -23,9 +23,9 @@ results_dict=experiments_dict
 
 
 loc="/users/hll537/Experimental_data/set2/FTACV/280"
-loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/FTACV/280"
+#loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/FTACV/280"
 
-frequencies=[x+"_Hz" for x in ["3","9","15","21"]]
+frequencies=[x+"_Hz" for x in ["3","9","15"]]
 amps=["80","280"]
 best_fits=dict(zip(frequencies,[
     [-0.4244818992, 0.0417143285,     4.9920932937e+03, 1.8134851259e-10,         2.5644285241e+03, 6.6014432067e-05, -4.6443012010e-03, -1.2340727286e-03, -1.4626502188e-05, 3.0346809949,  0.524292126,experiments_dict["FTACV"]["3_Hz"]["280"]["phase"],17.3902151683],
@@ -34,7 +34,7 @@ best_fits=dict(zip(frequencies,[
 
 ]))
 curr_frequency=frequencies[int(sys.argv[1])-1]
-
+r_index=dict(zip(frequencies, [[1900, 3000],[200, 1000],[50, 3000]]))
 files=os.listdir(loc)
 amp="280"
 fileloc=os.path.join(loc,[file for file in files if curr_frequency in file][0])
@@ -76,10 +76,11 @@ slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","C
 param_dict=dict(zip(slurm_class.optim_list, best_fits[curr_frequency][:-1]))
 file=[x for x in files if curr_frequency in x][0]
 k0_values=sci._utils.custom_logspace(50, 5000, param_dict["k0"], 100)
-ru_values=sci._utils.custom_logspace(50, 3000, param_dict["Ru"], 100)
+ru_values=sci._utils.custom_logspace(r_index[curr_frequency][0], r_index[curr_frequency][1], param_dict["Ru"], 100)
 values=list(itertools.product(ru_values, k0_values))
-
-
+print(k0_values)
+print(ru_values)
+print(len(values))
 data=np.loadtxt(fileloc)
 current=data[:,1]
 time=data[:,0]
@@ -88,13 +89,23 @@ potential=data[:,2]
 problem=pints.SingleOutputProblem(slurm_class, slurm_class.nondim_t(time), slurm_class.nondim_i(current))
 
 likelihood=sci.FourierGaussianLogLikelihood(problem)
+#best_fits[curr_frequency][2]=50
+#print(likelihood(best_fits[curr_frequency]))
+idx=int(sys.argv[2])
+chunk=int(sys.argv[3])
+data_array=np.zeros(( chunk, 3))
+for j in range(0, chunk):
+ print(values[(idx*chunk)+j])
+ param_dict["Ru"]=values[(idx*chunk)+j][0]
+ param_dict["k0"]=values[(idx*chunk)+j][1]
+ data_array[j,0]=param_dict["Ru"]
+ data_array[j,1]=param_dict["k0"]
 
-idx=int(sys.argv[2]-1)
-param_dict["Ru"]=values[idx][0]
-param_dict["k0"]=values[idx][1]
-values=[start_dict[x] for x in slurm_class.optim_list]
-score=likelihood(values+[best_fits[curr_frequency][-1]])
-print(param_dict["Ru"],",",param_dict["k0"],",",score)
+ sim_values=[param_dict[x] for x in slurm_class.optim_list]
+ score=likelihood(sim_values+[best_fits[curr_frequency][-1]])
+ data_array[j,2]=score
+np.savetxt("tmp_scan_results/{1}/scan_{0}".format(sys.argv[2],curr_frequency), data_array)
+
 
 
 
