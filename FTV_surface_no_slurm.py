@@ -73,14 +73,24 @@ slurm_class.top_hat_width=0.25
 slurm_class.Fourier_function="abs"
 slurm_class.Fourier_harmonics=list(range(4, 10))
 slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha","phase"]
+combos=list(itertools.combinations(list1, 2))
+for i in range(0, len(combos)):
+    if "k0" in combos[i] and "Ru" in combos[i]:
+        del_idx=i
+del combos[del_idx]
 param_dict=dict(zip(slurm_class.optim_list, best_fits[curr_frequency][:-1]))
 file=[x for x in files if curr_frequency in x][0]
-k0_values=sci._utils.custom_logspace(50, 5000, param_dict["k0"], 100)
-ru_values=sci._utils.custom_logspace(r_index[curr_frequency][0], r_index[curr_frequency][1], param_dict["Ru"], 100)
-values=list(itertools.product(ru_values, k0_values))
-print(k0_values)
-print(ru_values)
-print(len(values))
+k0_values=sci._utils.custom_logspace(50, 5000, param_dict["k0"], 50)
+ru_values=sci._utils.custom_logspace(r_index[curr_frequency][0], r_index[curr_frequency][1], param_dict["Ru"], 50)
+alpha_vals=sci._utils.custom_linspace(0.4, 0.6, param_dict["alpha"], 50)
+phase_values=sci._utils.custom_linspace(0,2*np.pi, param_dict["phase"], 50)
+scan_dict=dict(zip(["k0","Ru","alpha","phase"], [k0_values, ru_values, alpha_vals, phase_values]))
+for key in slurm_class_optim_list:
+    if key not in scan_dict:
+        best_val=param_dict[key]
+        scan_dict[key]=sci._utils.custom_linspace(0.8*best_val, 1.2*best_val, best_val, 50)
+
+
 data=np.loadtxt(fileloc)
 current=data[:,1]
 time=data[:,0]
@@ -89,22 +99,27 @@ potential=data[:,2]
 problem=pints.SingleOutputProblem(slurm_class, slurm_class.nondim_t(time), slurm_class.nondim_i(current))
 
 likelihood=sci.FourierGaussianLogLikelihood(problem)
-#best_fits[curr_frequency][2]=50
-#print(likelihood(best_fits[curr_frequency]))
+
 idx=int(sys.argv[2])
 chunk=int(sys.argv[3])
-data_array=np.zeros(( chunk, 3))
-for j in range(0, chunk):
- print(values[(idx*chunk)+j])
- param_dict["Ru"]=values[(idx*chunk)+j][0]
- param_dict["k0"]=values[(idx*chunk)+j][1]
- data_array[j,0]=param_dict["Ru"]
- data_array[j,1]=param_dict["k0"]
 
- sim_values=[param_dict[x] for x in slurm_class.optim_list]
- score=likelihood(sim_values+[best_fits[curr_frequency][-1]])
- data_array[j,2]=score
-np.savetxt("tmp_scan_results/{1}/scan_{0}".format(sys.argv[2],curr_frequency), data_array)
+for i in range(0, len(combos)):
+    val1=combos[i][0]
+    val2=combos[i][1]
+    values=list(itertools.product(scan_dict[val1], scan_dict[val2]))
+    param_dict=dict(zip(slurm_class.optim_list, copy.deepcopy(best_fits[curr_frequency][:-1])))
+    data_array=np.zeros(( chunk, 3))
+    for j in range(0, chunk):
+    
+        param_dict[val1]=values[(idx*chunk)+j][0]
+        param_dict[val2]=values[(idx*chunk)+j][1]
+        data_array[j,0]=param_dict[val1]
+        data_array[j,1]=param_dict[val2]
+
+        sim_values=[param_dict[x] for x in slurm_class.optim_list]
+        score=likelihood(sim_values+[best_fits[curr_frequency][-1]])
+        data_array[j,2]=score
+    np.savetxt("tmp_scan_results/{1}/scan_{0}_{2}_{3}".format(sys.argv[2],curr_frequency, val1, val2), data_array)
 
 
 

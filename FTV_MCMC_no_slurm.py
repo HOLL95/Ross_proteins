@@ -22,7 +22,7 @@ results_dict=experiments_dict
 
 
 loc="/users/hll537/Experimental_data/set2/FTACV/280"
-#loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/"
+loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/FTACV/280"
 
 frequencies=[x+"_Hz" for x in ["3","9","15","21"]]
 amps=["80","280"]
@@ -81,9 +81,10 @@ potential=data[:,2]
 problem=pints.SingleOutputProblem(slurm_class, slurm_class.nondim_t(time), slurm_class.nondim_i(current))
 
 likelihood=sci.FourierGaussianLogLikelihood(problem)
+print(likelihood(best_fits[curr_frequency]),"likelihood")
 #likelihood.test(best_fits[curr_frequency][:-1])
 #plt.show()
-test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[curr_frequency][:-1], time))
+#test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[curr_frequency][:-1], time))
 
 axes=sci.plot.plot_harmonics(Data_data={"time":time, "current":current*1e6,  "harmonics":list(range(2, 10))},
                     Sim_data={"time":time, "current":test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
