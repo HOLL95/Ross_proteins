@@ -73,7 +73,7 @@ slurm_class.top_hat_width=0.25
 slurm_class.Fourier_function="abs"
 slurm_class.Fourier_harmonics=list(range(4, 10))
 slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha","phase"]
-combos=list(itertools.combinations(list1, 2))
+combos=list(itertools.combinations(slurm_class.optim_list, 2))
 for i in range(0, len(combos)):
     if "k0" in combos[i] and "Ru" in combos[i]:
         del_idx=i
@@ -85,10 +85,13 @@ ru_values=sci._utils.custom_logspace(r_index[curr_frequency][0], r_index[curr_fr
 alpha_vals=sci._utils.custom_linspace(0.4, 0.6, param_dict["alpha"], 50)
 phase_values=sci._utils.custom_linspace(0,2*np.pi, param_dict["phase"], 50)
 scan_dict=dict(zip(["k0","Ru","alpha","phase"], [k0_values, ru_values, alpha_vals, phase_values]))
-for key in slurm_class_optim_list:
+for key in slurm_class.optim_list:
     if key not in scan_dict:
         best_val=param_dict[key]
-        scan_dict[key]=sci._utils.custom_linspace(0.8*best_val, 1.2*best_val, best_val, 50)
+        if "CdlE" in key:
+         scan_dict[key]=sci._utils.custom_linspace(0.95*best_val, 1.05*best_val, best_val, 50)
+        else:
+         scan_dict[key]=sci._utils.custom_linspace(0.8*best_val, 1.2*best_val, best_val, 50)
 
 
 data=np.loadtxt(fileloc)
@@ -115,7 +118,7 @@ for i in range(0, len(combos)):
         param_dict[val2]=values[(idx*chunk)+j][1]
         data_array[j,0]=param_dict[val1]
         data_array[j,1]=param_dict[val2]
-
+        print(param_dict[val1], val1, param_dict[val2], val2)
         sim_values=[param_dict[x] for x in slurm_class.optim_list]
         score=likelihood(sim_values+[best_fits[curr_frequency][-1]])
         data_array[j,2]=score
