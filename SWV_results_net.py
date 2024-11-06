@@ -8,7 +8,7 @@ labels=["constant", "linear","quadratic","cubic"]
 directions=["anodic","cathodic"]
 params=["E0_mean","E0_std","k0","gamma"]
 colours=["blue", "orange","green","red"]
-loc="/home/henryll/Documents/Inference_results/swv/set4_4"
+loc="/home/henryll/Documents/Inference_results/swv/set4_8"
 ylabels=[r"$E^0 \mu$ (V)", r"$E^0 \sigma$ (V)", r"$k_0$ ($s^{-1}$)", r"$\Gamma$ (mol cm$^{-2}$)"]
 #values=dict(zip(params, [np.zeros((len(labels),len(freqs))) for x in params]))
 fig, ax=plt.subplots(2,2)
@@ -26,8 +26,11 @@ for i in range(0, len(freqs)):
             axis.set_xticks(freqs)
                 
     for j in range(0, len(directions)):
-        for m in range(0, len(labels)):
-            param_values=sci._utils.read_param_table(os.path.join(loc, "SWV_{0}".format(freqs[i]), directions[j], labels[m], "PooledResults_2024-09-26","Full_table.txt"))[0]
+        for m in range(1, len(labels)):
+            try:
+                param_values=sci._utils.read_param_table(os.path.join(loc, "SWV_{0}".format(freqs[i]), directions[j], labels[m], "PooledResults_2024-10-28","Full_table.txt"))[1]
+            except:
+                print(freqs[i], directions[j], labels[m])
             for z in range(0, len(params)):
                 axis=ax[z//2, z%2]
                 axis.scatter(freqs[i]+vals[j], param_values[z], color=colours[m], marker=markers[j])
@@ -47,4 +50,6 @@ for i in range(0,2):
 
 ax[1,0].axhline(120, color="black", linestyle="--", label="15 Hz FTACV value")
 ax[1,0].legend()
+fig.set_size_inches(9, 6)
+fig.savefig("SWV_results_net.png", dpi=500)
 plt.show()

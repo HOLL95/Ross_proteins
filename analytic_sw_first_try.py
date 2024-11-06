@@ -26,17 +26,19 @@ sw_class=sci.SingleExperiment("SquareWave",
                             )
 times=sw_class.calculate_times()
 potential=sw_class.get_voltage(times)
-plt.plot(pot, data_current)
-ax=plt.gca()
-twinx=ax.twinx()
-twinx.plot(pot, data[:-1, 2], color="red")
-plt.show()
 
 
 num_steps=input_dict["delta_E"]/input_dict["scan_increment"]
 potential_vals=np.zeros(len(potential))
 potential_vals[0]=input_dict["E_start"]
+def logistic(k, x, a):
+    return 1/(1+a*np.exp(-2*k*x))
+x=np.linspace(-5, 5, 1000)
+for a in range(1, 10):
+    plt.plot(x, logistic(2, x, a))
+plt.show()
 plt.plot(times, potential)
+
 """for i in range(1, 2*int(num_steps)):
 
     
@@ -54,28 +56,8 @@ plt.scatter(sw_class._internal_memory["SW_params"]["b_idx"], pot, label="Data")
 plt.scatter(sw_class._internal_memory["SW_params"]["b_idx"], sw_class._internal_memory["SW_params"]["E_p"], s=5, label="b_idx")
 plt.scatter(sw_class._internal_memory["SW_params"]["f_idx"], sw_class._internal_memory["SW_params"]["E_p"]-input_dict["SW_amplitude"], s=5, color="red", label="f_idx")
 plt.legend()
+plt.xlim([0,600])
+plt.ylim([-0.01,0])
 plt.show()
 
-sw_class.boundaries={
-"E0":[-0.5, -0.3],
-"E0_mean":[-0.5, -0.3],
-"E0_std":[1e-3, 0.1],
-"k0":[0.1, 1e3],
-"alpha":[0.4, 0.6],
-"gamma":[1e-11, 1e-9],
-"Cdl":[-10, 10],
-"alpha":[0.4, 0.6],
-"CdlE1":[-10, 10]
-}
-sw_class.dispersion_bins=[30]
-
-sw_class.optim_list=["E0","k0","gamma","Cdl","alpha", "CdlE1"]
-results=sw_class.Current_optimisation(sw_class._internal_memory["SW_params"]["b_idx"], sw_class.nondim_i(data_current), unchanged_iterations=200, tolerance=1e-8, dimensional=False, parallel=True)
-print(results)
-#results=[np.float64(-0.37662414409177947), np.float64(0.06914868425458533), np.float64(344.0590054855381), np.float64(3.29445437321673e-10), np.float64(0.028629232920096254), np.float64(0.5500069019648823), np.float64(0.0006478089511089012)]
-
-bestfit=sw_class.dim_i(sw_class.simulate(results[:-1],times))
-plt.plot(pot, data_current)
-plt.plot(pot, bestfit)
-plt.show()
 
