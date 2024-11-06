@@ -26,11 +26,11 @@ sw_class=sci.SingleExperiment("SquareWave",
                             )
 times=sw_class.calculate_times()
 potential=sw_class.get_voltage(times)
-plt.plot(pot, data_current)
-ax=plt.gca()
-twinx=ax.twinx()
-twinx.plot(pot, data[:-1, 2], color="red")
-plt.show()
+#plt.plot(pot, data_current)
+#ax=plt.gca()
+#twinx=ax.twinx()
+#twinx.plot(pot, data[:-1, 2], color="red")
+#plt.show()
 
 
 num_steps=input_dict["delta_E"]/input_dict["scan_increment"]
@@ -50,7 +50,7 @@ plt.plot(times, potential)
 plt.show()"""
 print(len(sw_class._internal_memory["SW_params"]["b_idx"]), len(data_current))
 
-plt.scatter(sw_class._internal_memory["SW_params"]["b_idx"], pot, label="Data")
+#plt.scatter(sw_class._internal_memory["SW_params"]["b_idx"], pot, label="Data")
 plt.scatter(sw_class._internal_memory["SW_params"]["b_idx"], sw_class._internal_memory["SW_params"]["E_p"], s=5, label="b_idx")
 plt.scatter(sw_class._internal_memory["SW_params"]["f_idx"], sw_class._internal_memory["SW_params"]["E_p"]-input_dict["SW_amplitude"], s=5, color="red", label="f_idx")
 plt.legend()

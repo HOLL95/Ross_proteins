@@ -12,13 +12,15 @@ directions_dict={"anodic":{"v":1, "E_start":-0.8},"cathodic":{"v":-1, "E_start":
 files=os.listdir(loc)
 for i in range(0,len(freqs)):
     for j in range(0, len(directions)):
-        file=[x for x in files if (strfreqs[i] in x and directions[j] in x)][0]
+        file=[x for x in files if (strfreqs[i] in x and directions[j] in x and ".csv" in x)][0]
         try:
             data=np.loadtxt(os.path.join(loc, file), delimiter=",")
         except:
             data=np.loadtxt(os.path.join(loc, file))
-        pot=data[:-1,0]
-        data_current=data[:-1,1]
+        pot=data[:-1, 0]
+        data_current=data[:-1,2]
+        #plt.plot(pot, data_current)
+        #plt.show()
         sw_class=sci.SingleSlurmSetup("SquareWave",
                                     {"omega":freqs[i],
                                     "scan_increment":2e-3,#abs(pot[1]-pot[0]),
@@ -31,13 +33,13 @@ for i in range(0,len(freqs)):
                                     "area":0.07,
                                     "N_elec":1,
                                     "Surface_coverage":1e-10},
-                                    square_wave_return="backwards",
+                                    square_wave_return="net",
                                     problem="inverse"
 
                                     )
         times=sw_class.calculate_times()
         potential=sw_class.get_voltage(times)
-        
+        netfile=np.savetxt(os.path.join("sw_net_data", file), np.column_stack((list(range(0, len(pot))), data_current, pot)))
 
         extra_keys=["CdlE1","CdlE2","CdlE3"]
         labels=["constant", "linear","quadratic","cubic"]
@@ -51,9 +53,9 @@ for i in range(0,len(freqs)):
             "E0":[-0.5, -0.3],
             "E0_mean":[-0.5, -0.3],
             "E0_std":[1e-3, 0.1],
-            "k0":[0.1, 1e3],
+            "k0":[0.1, 5e3],
             "alpha":[0.4, 0.6],
-            "gamma":[1e-11, 6e-10],
+            "gamma":[1e-11, 1e-8],
             "Cdl":[-10,10],
             "CdlE1":[-10, 10],
             "CdlE2":[-10, 10],
@@ -70,7 +72,7 @@ for i in range(0,len(freqs)):
             #bestfit=sw_class.dim_i(sw_class.simulate(results[:-1],times))
             
             sw_class.setup(
-            datafile=os.path.join(loc,file),
+            datafile=os.path.join("sw_net_data",file),
             cpu_ram="12G",
             time="0-02:00:00",
             runs=3, 
