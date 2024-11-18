@@ -9,13 +9,13 @@ import matplotlib.ticker as ticker
 loc="/home/userfs/h/hll537/Documents/Experimental_data/SWV"
 loc="/users/hll537/Experimental_data/SWV"
 loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/SquareWave"
-freqs=[150,  300]
+freqs=[200,  450]
 strfreqs=[str(x) for x in freqs]
 directions=["anodic","cathodic"]
 dirlabels=["A","C"]
 directions_dict={"anodic":{"v":1, "E_start":-0.8},"cathodic":{"v":-1, "E_start":0}}
 
-paramloc="/home/henryll/Documents/Inference_results/swv/set4_13"
+paramloc="/home/henryll/Documents/Inference_results/swv/set4_10"
 likelihood_params=["E0_mean", "gamma"]
 from matplotlib.patches import Rectangle
 from matplotlib.transforms import TransformedBbox, Bbox
@@ -64,7 +64,7 @@ left=0.083,
 right=0.975,
 hspace=0.355,
 wspace=0.265)
-profileloc="Profile_likelihoods/SWV_net_linear"
+profileloc="Profile_likelihoods/SWV2"
 profilefiles=os.listdir(profileloc)
 
 all_titles=sci._utils.get_titles(likelihood_params+["k0"])
@@ -74,20 +74,20 @@ likelihood_ax[0][0].text(1.1, 1.15, all_titles[-1],
         transform=axes[0,0].transAxes)
 filelist=[files, blankfiles]
 locs=[loc, os.path.join(loc, "Blanks")]
-colors=["#a585","darkgrey" ]
+colors=["#29af7f","darkgrey" ]
 labels=["Experimental", "PGE"]
 gs=[1,0]
 for i in range(0,len(freqs)):
     for j in range(0, len(directions)):
         g=1
         file=[x for x in filelist[g] if (strfreqs[i] in x and directions[j] in x)][0]
-                    
+                        
         try:
             data=np.loadtxt(os.path.join(locs[g], file), delimiter=",")
         except:
             data=np.loadtxt(os.path.join(locs[g], file))
         pot=data[2:-2,0]
-        data_current=data[2:-2,  1]*1e6
+        data_current=data[2:-2,  2]*1e6
         if j==0:
             label=labels[g]
         else:
@@ -100,14 +100,14 @@ for i in range(0,len(freqs)):
     for j in range(0, len(directions)):
 
         g=0
-        file=[x for x in filelist[g] if (strfreqs[i] in x and directions[j] in x and "lock" not in x)][0]
+        file=[x for x in filelist[g] if (strfreqs[i] in x and directions[j] in x)][0]
         
         try:
             data=np.loadtxt(os.path.join(locs[g], file), delimiter=",")
         except:
             data=np.loadtxt(os.path.join(locs[g], file))
         pot=data[2:-2,0]
-        data_current=data[2:-2,  1]*1e6
+        data_current=data[2:-2,  2]*1e6
         if j==0:
             label=labels[g]
         else:
@@ -148,14 +148,28 @@ for i in range(0,len(freqs)):
         #newfilelist[-1]="txt"
         #savefile=".".join(newfilelist)
         #np.savetxt(os.path.join(saveloc, savefile),np.column_stack((sw_class._internal_memory["SW_params"]["b_idx"], data_current, pot)),)
-        for m in range(1, 2):
+        for m in range(2, 3):
 
             
             #sw_class.fixed_parameters={"alpha":0.5}
            
             try:
-                best_fit=sci._utils.read_param_table(os.path.join(paramloc, "SWV_{0}".format(freqs[i]), directions[j], labels[m].lower(), "PooledResults_2024-11-14","Full_table.txt"))[1]
-                print(best_fit, directions[j])
+                best_fit=sci._utils.read_param_table(os.path.join(paramloc, "SWV_{0}".format(freqs[i]), directions[j], labels[m].lower(), "PooledResults_2024-11-08","Full_table.txt"))[0]
+                print(best_fit)
+                if freqs[i]==200:
+                    if directions[j]=="anodic":
+                        best_fit[2]=206.0847753491919 
+                        best_fit[3]=1.624323718532389e-10
+                    else:
+                        best_fit[2]=203.35762408918902
+                        best_fit[3]=1.6127442195381528e-10 
+                elif freqs[i]==450:
+                    if directions[j]=="anodic":
+                        best_fit[2]=197.32029888918916 
+                        best_fit[3]=3.6645505257491716e-10
+                    else:
+                        best_fit[2]=190.16931311621622
+                        best_fit[3]=3.75405016374619e-10
             except:
                 continue
             #best_fit[3]*=(0.07/0.036)
@@ -194,19 +208,30 @@ for i in range(0,len(freqs)):
                 datadict[score_data[g,0]][score_data[g,1]]=scores[g]#data[j,2]
             
             results_array=np.zeros((len(X_vals), len(Y_vals)))
+            
+            if likelihood_params[m]=="gamma":
+                desired_k=100
+                Y_vals=np.array(Y_vals)
+                X_vals=np.array(X_vals)
+                absmin=np.abs(Y_vals-desired_k)
+                closest_val=Y_vals[np.where(absmin==min(absmin))][0]
+                score_vals=[datadict[x][closest_val] for x in X_vals]
+                best_gamma=X_vals[np.where(score_vals==max(score_vals))]
+                print(closest_val, best_gamma[0], freqs[i], "hello", max(score_vals))
+
+
             for k in range(0, len(X_vals)):
                 for r in range(0, len(Y_vals)):
                     results_array[k, r]=datadict[X_vals[k]][Y_vals[r]]
             
+
             results_array=results_array.T
             X, Y = np.meshgrid(X_vals, Y_vals)
             Z=results_array*factor
             CS=ax.contourf(X,Y,Z, 15,cmap=cm.viridis_r)
-            ax.set_yscale("log")
             if param1 =="gamma":
                     ax.set_xscale("log")
                     ax.xaxis.set_major_locator(ticker.LogLocator(subs="all"))
-                    ax.scatter(best_fit[3], best_fit[2])
           
             
             if (i*2)+j==2:    
@@ -254,6 +279,6 @@ init_x=axes[0, 1].get_position()
 final_x=axes[1, -1].get_position()
 print(init_x, final_x)
 plt.show()
-fig.savefig("fig3_draft.png",dpi=500)
+fig.savefig("sw_fig_lowk.png",dpi=500)
 
             

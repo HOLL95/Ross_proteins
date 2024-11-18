@@ -3,17 +3,17 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import os
-file="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/SquareWave/SWV m4D2 PGE_2 mV_500 Hz_5 deg_cathodic.csv"
+file="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/SquareWave/SWV m4D2 PGE_2 mV_25 Hz_5 deg_cathodic.csv"
 data=np.loadtxt(file, delimiter=",")
 pot=data[:-1,0]
 data_current=data[:-1,2]
-input_dict={"omega":500,
+input_dict={"omega":25,
                             "scan_increment":2e-3,#abs(pot[1]-pot[0]),
                             "delta_E":0.8,
                             "SW_amplitude":2e-3,
                             "sampling_factor":200,
                             "E_start":0,
-                            "Temp":298,
+                            "Temp":278,
                             "v":-1,
                             "area":0.07,
                             "N_elec":1,
@@ -26,11 +26,11 @@ sw_class=sci.SingleExperiment("SquareWave",
                             )
 times=sw_class.calculate_times()
 potential=sw_class.get_voltage(times)
-#plt.plot(pot, data_current)
+plt.plot(pot, data_current)
 #ax=plt.gca()
 #twinx=ax.twinx()
 #twinx.plot(pot, data[:-1, 2], color="red")
-#plt.show()
+plt.show()
 
 
 num_steps=input_dict["delta_E"]/input_dict["scan_increment"]
@@ -57,8 +57,8 @@ plt.legend()
 plt.show()
 
 sw_class.boundaries={
-"E0":[-0.5, -0.3],
-"E0_mean":[-0.5, -0.3],
+"E0":[-0.46, -0.43],
+"E0_mean":[-0.46, -0.4],
 "E0_std":[1e-3, 0.1],
 "k0":[0.1, 1e3],
 "alpha":[0.4, 0.6],
@@ -71,11 +71,27 @@ sw_class.dispersion_bins=[30]
 
 sw_class.optim_list=["E0","k0","gamma","Cdl","alpha", "CdlE1"]
 results=sw_class.Current_optimisation(sw_class._internal_memory["SW_params"]["b_idx"], sw_class.nondim_i(data_current), unchanged_iterations=200, tolerance=1e-8, dimensional=False, parallel=True)
-print(results)
-#results=[np.float64(-0.37662414409177947), np.float64(0.06914868425458533), np.float64(344.0590054855381), np.float64(3.29445437321673e-10), np.float64(0.028629232920096254), np.float64(0.5500069019648823), np.float64(0.0006478089511089012)]
+#results=[np.float64(-0.4399461187422237), np.float64(1e-2), np.float64(5.733436001804794e-10), np.float64(0.009400978459975562), np.float64(0.5696864159186446), np.float64(0.5), np.float64(0.014615239954704711)]
 
-bestfit=sw_class.dim_i(sw_class.simulate(results[:-1],times))
-plt.plot(pot, data_current)
-plt.plot(pot, bestfit)
-plt.show()
+#results=[np.float64(-0.37662414409177947), np.float64(0.06914868425458533), np.float64(344.0590054855381), np.float64(3.29445437321673e-10), np.float64(0.028629232920096254), np.float64(0.5500069019648823), np.float64(0.0006478089511089012)]
+results_class=sw_class=sci.SingleExperiment("SquareWave",
+                            input_dict,
+                            square_wave_return="total",
+                            problem="forwards"
+
+                            )
+results_class.optim_list=["E0","k0","gamma","Cdl","alpha", "CdlE1"]
+k_vals=[10**x for x in np.linspace(-3, 2, 25)]
+#k_vals=np.linspace(15, 50, 25)
+for k in k_vals:
+    #results[1]=k
+    print(k)
+    bestfit=results_class.dim_i(results_class.simulate(results[:-1],times))
+    forwards, backwards, net, ep=results_class.SW_peak_extractor(bestfit)
+    plt.plot(pot, data_current)
+    plt.plot(ep, backwards, label="backwards")
+    plt.plot(ep-input_dict["SW_amplitude"], forwards, label="forwards")
+    plt.plot(ep, backwards-forwards, label="net")
+    plt.legend()
+    plt.show()
 

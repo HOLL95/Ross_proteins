@@ -26,16 +26,14 @@ best_fits=dict(zip(frequencies,[
     [-0.4225575542, 0.0765111705,     111.5784183264,   7.7951293716e-11,         184.9121615528,   9.9349322658e-05, -1.6383464471e-03, -3.3463983363e-04, -7.5051594548e-06, 15.1735928635, 0.4006210586, ]
 
 ]))
-best_fits=dict(zip(frequencies,[
-    [-0.4244818992, 0.0417143285, 4992.0932937, 1.8134851259e-10, 4986.388796861112, 6.601443206699998e-05, -0.004644301201, -0.0012340727286, -1.4626502188e-05, 3.0346809949, 0.524292126],
-    [-0.4205770335, 0.0650104188, 1845.7772599, 1.1283378372e-10, 1487.4695282288335, 9.905427703399998e-05, -0.0035929255146, -0.00071997893984, -5.3937670998e-06, 9.1041692039, 0.4770065713],
-    [-0.4225575542, 0.0765111705, 111.5784183264, 7.7951293716e-11, 359.55142524155565, 9.934932265799998e-05, -0.0016383464471, -0.00033463983363, -7.5051594548e-06, 15.173592863499998, 0.4006210586]
-,
+nondims={
+    "3_Hz":{'E_start': np.float64(-37.15617543627824), 'E_reverse': np.float64(-0.026628768349483585), 'omega': np.float64(7.672744209895916), 'phase': 0, 'delta_E': np.float64(11.15436387652591), 'v': np.float64(1.0), 'Temp': 278, 'N_elec': 1, 'Surface_coverage': 1e-10, 'area': 0.07, 'CdlE2': -0.0012340727286, 'gamma': 1.8134851259, 'CdlE3': -1.4626502188e-05, 'Cdl': np.float64(0.16390610439952177), 'alpha': 0.524292126, 'E0_std': 1.741276425047796, 'CdlE1': -0.004644301201, 'k0': np.float64(2008.8175776654834), 'E0_mean': -17.71909918042849, 'Ru': np.float64(0.17966959749510292), 'E0': 0.0, 'theta': 0, 'phase_flag': 0, 'Marcus_flag': 0, 'tr': np.float64(37.12954666792876), 'cap_phase': 0},
+    "9_Hz":{'E_start': np.float64(-37.152188838740585), 'E_reverse': np.float64(-0.027216778192551777), 'omega': np.float64(23.02050705566578), 'phase': 0, 'delta_E': np.float64(9.330216773192323), 'v': np.float64(1.0), 'Temp': 278, 'N_elec': 1, 'Surface_coverage': 1e-10, 'area': 0.07, 'Ru': np.float64(0.053591960547363454), 'CdlE2': -0.00071997893984, 'Cdl': np.float64(0.2459401704202494), 'k0': np.float64(742.8035787234024), 'CdlE1': -0.0035929255146, 'alpha': 0.4770065713, 'CdlE3': -5.3937670998e-06, 'E0_mean': -17.55609881985963, 'E0_std': 2.7137224476458734, 'gamma': 1.1283378372, 'E0': 0.0, 'theta': 0, 'phase_flag': 0, 'Marcus_flag': 0, 'tr': np.float64(37.12497206054804), 'cap_phase': 0},
+    "15_Hz":{'E_start': np.float64(-37.15285703322782), 'E_reverse': np.float64(-0.026686123977569833), 'omega': np.float64(38.3661608491904), 'phase': 0, 'delta_E': np.float64(7.462119887777051), 'v': np.float64(1.0), 'Temp': 278, 'N_elec': 1, 'Surface_coverage': 1e-10, 'area': 0.07, 'CdlE3': -7.5051594548e-06, 'CdlE2': -0.00033463983363, 'E0_mean': -17.63877146804164, 'E0_std': 3.1937970053734026, 'alpha': 0.4006210586, 'gamma': 0.77951293716, 'CdlE1': -0.0016383464471, 'k0': np.float64(44.90143788942225), 'Ru': np.float64(0.012954696126217748), 'Cdl': np.float64(0.24667273415420504), 'E0': 0.0, 'theta': 0, 'phase_flag': 0, 'Marcus_flag': 0, 'tr': np.float64(37.12617090925025), 'cap_phase': 0},
 
-
-]))
+}
 amps=["80","280"]
-for i in range(2,len(frequencies)):
+for i in range(0,len(frequencies)):
     
     for j in range(1, len(amps)):
         amp=amps[j]
@@ -47,7 +45,7 @@ for i in range(2,len(frequencies)):
             dictionary["Temp"]=278
             dictionary["N_elec"]=1
             dictionary["Surface_coverage"]=1e-10
-            dictionary["area"]=0.07
+            dictionary["area"]=0.036
 
         slurm_class = sci.RunSingleExperimentMCMC(
             "FTACV",
@@ -75,27 +73,5 @@ for i in range(2,len(frequencies)):
         slurm_class.Fourier_harmonics=list(range(3, 10))
         slurm_class.fixed_parameters={"phase":0}
         slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega", "alpha"]
-
-        data=np.loadtxt(os.path.join(full_loc, filename))
-        time=data[:,0]
-        potential=data[:,2]
-        current=data[:,1]
-
-        test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[frequencies[i]], time))
-
-
-        times=slurm_class.calculate_times(dimensional=True)
-        best_fits[frequencies[i]][2]=1000
-        trumpet_test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[frequencies[i]], time))
-       
-        axes=sci.plot.plot_harmonics(Data_data={"time":time, "current":current*1e6, "potential":potential, "harmonics":list(range(2, 10))},
-                                Sim_data={"time":time, "current":test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
-                                SWVK_data={"time":time, "current":trumpet_test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
-                                plot_func=np.abs, hanning=True,  xlabel="Time (s)", ylabel="Current ($\\mu$A)", remove_xaxis=True, save_csv=True)
-        #sci.plot.generate_harmonics(time, test, one_sided=True, hanning=False, save_csv="{0}_harmonics.csv".format(frequencies[i]))
-        axes[0].set_title("{1} mV {0} Hz".format(frequencies[i], amp))
-        plt.show()
-        
-    #fig=plt.gcf()
-    #fig.set_size_inches(5, 6)
-    #fig.savefig("Initial_plots/Init_results/{0}_Hz_FTV_harmonics".format(frequencies[i]), dpi=500)
+        redimmed_dict=slurm_class.redimensionalise(nondims[frequencies[i]])
+        print([float(redimmed_dict[x]) for x in slurm_class.optim_list])

@@ -9,13 +9,13 @@ import matplotlib.ticker as ticker
 loc="/home/userfs/h/hll537/Documents/Experimental_data/SWV"
 loc="/users/hll537/Experimental_data/SWV"
 loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/SquareWave"
-freqs=[150,  300]
+freqs=[200,  450]
 strfreqs=[str(x) for x in freqs]
 directions=["anodic","cathodic"]
 dirlabels=["A","C"]
 directions_dict={"anodic":{"v":1, "E_start":-0.8},"cathodic":{"v":-1, "E_start":0}}
 
-paramloc="/home/henryll/Documents/Inference_results/swv/set4_13"
+paramloc="/home/henryll/Documents/Inference_results/swv/set4_10"
 likelihood_params=["E0_mean", "gamma"]
 from matplotlib.patches import Rectangle
 from matplotlib.transforms import TransformedBbox, Bbox
@@ -64,7 +64,7 @@ left=0.083,
 right=0.975,
 hspace=0.355,
 wspace=0.265)
-profileloc="Profile_likelihoods/SWV_net_linear"
+profileloc="Profile_likelihoods/SWV2"
 profilefiles=os.listdir(profileloc)
 
 all_titles=sci._utils.get_titles(likelihood_params+["k0"])
@@ -74,14 +74,41 @@ likelihood_ax[0][0].text(1.1, 1.15, all_titles[-1],
         transform=axes[0,0].transAxes)
 filelist=[files, blankfiles]
 locs=[loc, os.path.join(loc, "Blanks")]
-colors=["#a585","darkgrey" ]
+colors=["#28ae80","darkgrey" ]
 labels=["Experimental", "PGE"]
 gs=[1,0]
+linestyles=dict(zip(["low", "best", "high"],["--", "-", ":"]))
+markers=dict(zip(["low", "best", "high"],["_", "o", "+"]))
+params={
+    200:{"anodic":{
+            "best":[-0.3915875578, 0.0601998043, 838.0884167583, 8.2438683154e-10, 0.0045305178399, 0.011678976534, -0.026977536, 0.5, 0.00325415373],
+            "low":[-0.3915875578, 0.0601998043,105.40909967351621 , 1.9319206385185292e-10, 0.0045305178399, 0.011678976534, -0.026977536, 0.5, 0.00325415373],
+            "high":[-0.3915875578, 0.0601998043, 991.3550456194622 , 1.875822152544423e-09, 0.0045305178399, 0.011678976534, -0.026977536, 0.5, 0.00325415373],
+                },           
+         "cathodic":{
+            "best":[-0.4666344492, 0.0530688747, 1157.8288302, 3.3668580459e-09, 0.0221731968, 0.0401088399, 0.013143263127, 0.5, 0.0033717370148],
+            "low":[-0.4666344492, 0.0530688747, 102.68194841351334 , 1.8929270007457998e-10, 0.0221731968, 0.0401088399, 0.013143263127, 0.5, 0.0033717370148],
+            "high":[-0.4666344492, 0.0530688747, 1008.7630294945945 , 1.8880199532307738e-09, 0.0221731968, 0.0401088399, 0.013143263127, 0.5, 0.0033717370148],
+                }
+        },           
+      450:{"anodic":{
+            "best":[-0.3869628423, 0.0715899743, 1225.0469381, 5.1037705401e-10, 0.0171726555, -0.0042652239272, -0.0375877946, 0.5, 0.0023946530427],
+            "low":[-0.3869628423, 0.0715899743, 96.64462321351348 , 5.729464916099415e-10, 0.0171726555, -0.0042652239272, -0.0375877946, 0.5, 0.0023946530427],
+            "high":[-0.3869628423, 0.0715899743, 1002.7257042945946 , 4.3771522147241884e-10 , 0.0171726555, -0.0042652239272, -0.0375877946, 0.5, 0.0023946530427],
+                },           
+         "cathodic":{
+            "best":[-0.4717021475, 0.060805904, 1498.9530969 , 8.7723803839e-10, 0.0066411877079, 0.0623413276, 0.034829451, 0.5, 0.0020649452462],
+            "low":[-0.4717021475, 0.060805904, 109.62877257567567 , 5.47928163768272e-10, 0.0066411877079, 0.0623413276, 0.034829451, 0.5, 0.0020649452462],
+            "high":[-0.4717021475, 0.060805904, 995.5747185216217 , 4.126968936307493e-10, 0.0066411877079, 0.0623413276, 0.034829451, 0.5, 0.0020649452462],
+
+                }
+        }    
+}
 for i in range(0,len(freqs)):
     for j in range(0, len(directions)):
         g=1
         file=[x for x in filelist[g] if (strfreqs[i] in x and directions[j] in x)][0]
-                    
+                        
         try:
             data=np.loadtxt(os.path.join(locs[g], file), delimiter=",")
         except:
@@ -100,7 +127,7 @@ for i in range(0,len(freqs)):
     for j in range(0, len(directions)):
 
         g=0
-        file=[x for x in filelist[g] if (strfreqs[i] in x and directions[j] in x and "lock" not in x)][0]
+        file=[x for x in filelist[g] if (strfreqs[i] in x and directions[j] in x)][0]
         
         try:
             data=np.loadtxt(os.path.join(locs[g], file), delimiter=",")
@@ -148,24 +175,28 @@ for i in range(0,len(freqs)):
         #newfilelist[-1]="txt"
         #savefile=".".join(newfilelist)
         #np.savetxt(os.path.join(saveloc, savefile),np.column_stack((sw_class._internal_memory["SW_params"]["b_idx"], data_current, pot)),)
-        for m in range(1, 2):
+        for m in range(2, 3):
 
             
             #sw_class.fixed_parameters={"alpha":0.5}
            
             try:
-                best_fit=sci._utils.read_param_table(os.path.join(paramloc, "SWV_{0}".format(freqs[i]), directions[j], labels[m].lower(), "PooledResults_2024-11-14","Full_table.txt"))[1]
-                print(best_fit, directions[j])
+                best_fit=sci._utils.read_param_table(os.path.join(paramloc, "SWV_{0}".format(freqs[i]), directions[j], labels[m].lower(), "PooledResults_2024-11-08","Full_table.txt"))[0]
+                #print(best_fit)
             except:
                 continue
-            #best_fit[3]*=(0.07/0.036)
+           
             sw_class.dispersion_bins=[50]
             sw_class.optim_list=["E0_mean","E0_std","k0","gamma","Cdl"]+extra_keys[:m]+["alpha"]
-            sim=1e6*sw_class.dim_i(sw_class.Dimensionalsimulate(best_fit[:-1], times))
-            if j==0:                  
-                ax.plot(pot, sim[1:-2], color="#46327e", label="Simulation", )
-            else:
-                 ax.plot(pot, sim[1:-2], color="#46327e")
+            for key in ["low", "best", "high"]:
+                best_fit=params[freqs[i]][directions[j]][key]
+                print(best_fit)
+                sim=1e6*sw_class.dim_i(sw_class.Dimensionalsimulate(best_fit[:-1], times))
+            
+                if j==0 and key=="best":                  
+                    ax.plot(pot, sim[1:-2], color="#46327e", label="Simulation", linestyle=linestyles[key])
+                else:
+                    ax.plot(pot, sim[1:-2], color="#46327e", linestyle=linestyles[key])
        
         for m in range(0, len(likelihood_params)):
             
@@ -190,9 +221,21 @@ for i in range(0,len(freqs)):
             print(min(scores), max(scores))
             factor=100
             datadict={key:{} for key in X_vals}
+
             for g in range(0, len(score_data[:,0])):
                 datadict[score_data[g,0]][score_data[g,1]]=scores[g]#data[j,2]
-            
+            if likelihood_params[m]=="gamma":
+                X_vals=np.array(X_vals)
+                Y_vals=np.array(Y_vals)
+                
+                desired_k=1500
+                mink=np.abs(Y_vals-desired_k)
+                closest_k=Y_vals[np.where(mink==min(mink))][0]
+                
+                scores=[datadict[x][closest_k] for x in X_vals]
+                best_gamma=X_vals[np.where(scores==max(scores))][0]
+                print(closest_k,",", best_gamma, max(scores))
+
             results_array=np.zeros((len(X_vals), len(Y_vals)))
             for k in range(0, len(X_vals)):
                 for r in range(0, len(Y_vals)):
@@ -202,13 +245,12 @@ for i in range(0,len(freqs)):
             X, Y = np.meshgrid(X_vals, Y_vals)
             Z=results_array*factor
             CS=ax.contourf(X,Y,Z, 15,cmap=cm.viridis_r)
-            ax.set_yscale("log")
             if param1 =="gamma":
                     ax.set_xscale("log")
                     ax.xaxis.set_major_locator(ticker.LogLocator(subs="all"))
-                    ax.scatter(best_fit[3], best_fit[2])
-          
-            
+                    for key in ["low", "best", "high"]:
+                        best_fit=params[freqs[i]][directions[j]][key]
+                        ax.scatter(best_fit[3], best_fit[2], facecolor="#fde725", marker=markers[key])
             if (i*2)+j==2:    
                 xlims=[-100, 1e25]
                 likelihood_ax[-2][m].set_xlabel(all_titles[m])

@@ -10,3 +10,5 @@ scan_results
 tmp_scan_results
 Profile_likelihoods
 *.png
+sw_net_data
+*.csv

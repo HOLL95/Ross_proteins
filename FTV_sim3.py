@@ -19,23 +19,16 @@ results_dict=experiments_dict
 loc="/users/hll537/Experimental_data/set2/"
 loc="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/Interpolated/FTACV"
 
-frequencies=[x+"_Hz" for x in ["3","9","15"]]
+frequencies=[x+"_Hz" for x in ["3","9","15", "21"]]
 best_fits=dict(zip(frequencies,[
     [-0.4244818992, 0.0417143285,     4.9920932937e+03, 1.8134851259e-10,         2.5644285241e+03, 6.6014432067e-05, -4.6443012010e-03, -1.2340727286e-03, -1.4626502188e-05, 3.0346809949,  0.524292126,],
     [-0.4205770335, 0.0650104188,     1.8457772599e+03, 1.1283378372e-10,         764.9843288034,   9.9054277034e-05, -3.5929255146e-03, -7.1997893984e-04, -5.3937670998e-06, 9.1041692039,  0.4770065713,     ],
-    [-0.4225575542, 0.0765111705,     111.5784183264,   7.7951293716e-11,         184.9121615528,   9.9349322658e-05, -1.6383464471e-03, -3.3463983363e-04, -7.5051594548e-06, 15.1735928635, 0.4006210586, ]
-
+    [-0.4225575542, 0.0765111705,     111.5784183264,   7.7951293716e-11,         184.9121615528,   9.9349322658e-05, -1.6383464471e-03, -3.3463983363e-04, -7.5051594548e-06, 15.1735928635, 0.4006210586, ],
+    [-0.4207746785, 0.0841619709,     100,    1.6474031533e-10,         0.2,     1.9660283528e-04, -3.6874331086e-03, 2.1384053753e-03,  -2.9333803737e-05, 21.24295429,   0.4232091475, ]
 ]))
-best_fits=dict(zip(frequencies,[
-    [-0.4244818992, 0.0417143285, 4992.0932937, 1.8134851259e-10, 4986.388796861112, 6.601443206699998e-05, -0.004644301201, -0.0012340727286, -1.4626502188e-05, 3.0346809949, 0.524292126],
-    [-0.4205770335, 0.0650104188, 1845.7772599, 1.1283378372e-10, 1487.4695282288335, 9.905427703399998e-05, -0.0035929255146, -0.00071997893984, -5.3937670998e-06, 9.1041692039, 0.4770065713],
-    [-0.4225575542, 0.0765111705, 111.5784183264, 7.7951293716e-11, 359.55142524155565, 9.934932265799998e-05, -0.0016383464471, -0.00033463983363, -7.5051594548e-06, 15.173592863499998, 0.4006210586]
-,
-
-
-]))
+factor=(0.07/0.036)
 amps=["80","280"]
-for i in range(2,len(frequencies)):
+for i in range(3,len(frequencies)):
     
     for j in range(1, len(amps)):
         amp=amps[j]
@@ -46,8 +39,8 @@ for i in range(2,len(frequencies)):
         for dictionary in [results_dict["FTACV"][frequencies[i]][str(amp)]]:
             dictionary["Temp"]=278
             dictionary["N_elec"]=1
-            dictionary["Surface_coverage"]=1e-10
-            dictionary["area"]=0.07
+            dictionary["Surface_coverage"]=5e-9
+            dictionary["area"]=0.036
 
         slurm_class = sci.RunSingleExperimentMCMC(
             "FTACV",
@@ -78,20 +71,28 @@ for i in range(2,len(frequencies)):
 
         data=np.loadtxt(os.path.join(full_loc, filename))
         time=data[:,0]
+
         potential=data[:,2]
         current=data[:,1]
+        plot_dict=dict(Data_data={"time":time, "current":current*1e6, "potential":potential, "harmonics":list(range(2, 10))},
+                         plot_func=np.abs, hanning=True,  xlabel="Time (s)", ylabel="Current ($\\mu$A)", remove_xaxis=True, filter_val=0.5)
+        params=[
+            [-0.4207746785, 0.0841619709,     100,    1.6474031533e-10*factor,         0.2,     1.9660283528e-04, -3.6874331086e-03, 2.1384053753e-03,  -2.9333803737e-05, 21.24295429,   0.4232091475, ],
+            [-0.4207746785, 0.0841619709,     640,    1.6474031533e-10*factor,         10,     1.9660283528e-04, -3.6874331086e-03, 2.1384053753e-03,  -2.9333803737e-05, 21.24295429,   0.4232091475, ],
+            [-0.4207746785, 0.0841619709,     1620,    1.6474031533e-10*factor,         180,     1.9660283528e-04, -3.6874331086e-03, 2.1384053753e-03,  -2.9333803737e-05, 21.24295429,   0.4232091475, ]
+        ]
+        labels=["ru=0.2, k0=100_data", "ru=10, k0=640_data","ru=180, k0=640_data" ]
+        for g in range(0, len(labels)):
+            param=params[g]
 
-        test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[frequencies[i]], time))
-
-
+            test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(param, time))
+            plot_dict[labels[g]]={"time":time, "current":test*1e6, "potential":potential, "harmonics":list(range(2, 10))}
         times=slurm_class.calculate_times(dimensional=True)
-        best_fits[frequencies[i]][2]=1000
-        trumpet_test=slurm_class.dim_i(slurm_class.Dimensionalsimulate(best_fits[frequencies[i]], time))
-       
-        axes=sci.plot.plot_harmonics(Data_data={"time":time, "current":current*1e6, "potential":potential, "harmonics":list(range(2, 10))},
-                                Sim_data={"time":time, "current":test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
-                                SWVK_data={"time":time, "current":trumpet_test*1e6, "potential":potential, "harmonics":list(range(2, 10))},
-                                plot_func=np.abs, hanning=True,  xlabel="Time (s)", ylabel="Current ($\\mu$A)", remove_xaxis=True, save_csv=True)
+        
+
+        axes=sci.plot.plot_harmonics(
+                                **plot_dict
+                               )
         #sci.plot.generate_harmonics(time, test, one_sided=True, hanning=False, save_csv="{0}_harmonics.csv".format(frequencies[i]))
         axes[0].set_title("{1} mV {0} Hz".format(frequencies[i], amp))
         plt.show()

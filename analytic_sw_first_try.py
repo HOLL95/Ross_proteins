@@ -3,7 +3,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import os
-file="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/SquareWave/SWV m4D2 PGE_2 mV_500 Hz_5 deg_cathodic.csv"
+file="/home/henryll/Documents/Experimental_data/Nat/m4D2_set2/SquareWave/SWV_m4D2_PGE_2_mV_500_Hz_5_deg_cathodic.csv"
 data=np.loadtxt(file, delimiter=",")
 pot=data[:-1,0]
 data_current=data[:-1,2]
@@ -14,7 +14,7 @@ input_dict={"omega":500,
                             "sampling_factor":200,
                             "E_start":0,
                             "Temp":298,
-                            "v":-1,
+                            "v":1,
                             "area":0.07,
                             "N_elec":1,
                             "Surface_coverage":1e-10}
@@ -53,11 +53,11 @@ plt.show()"""
 print(len(sw_class._internal_memory["SW_params"]["b_idx"]), len(data_current))
 
 plt.scatter(sw_class._internal_memory["SW_params"]["b_idx"], pot, label="Data")
-plt.scatter(sw_class._internal_memory["SW_params"]["b_idx"], sw_class._internal_memory["SW_params"]["E_p"], s=5, label="b_idx")
-plt.scatter(sw_class._internal_memory["SW_params"]["f_idx"], sw_class._internal_memory["SW_params"]["E_p"]-input_dict["SW_amplitude"], s=5, color="red", label="f_idx")
+plt.scatter(sw_class._internal_memory["SW_params"]["b_idx"], sw_class._internal_memory["SW_params"]["E_p"], label="b_idx")
+plt.scatter(sw_class._internal_memory["SW_params"]["f_idx"], sw_class._internal_memory["SW_params"]["E_p"]-input_dict["SW_amplitude"], color="green", label="f_idx")
 plt.legend()
-plt.xlim([0,600])
-plt.ylim([-0.01,0])
+#plt.xlim([0,600])
+#plt.ylim([-0.01,0])
 plt.show()
 
 

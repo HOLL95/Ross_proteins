@@ -99,6 +99,6 @@ for z in range(1, len(scatter_folders)):
     fig=plt.gcf()
     fig.set_size_inches(8.3, 11.7)
     plt.subplots_adjust(top=0.95, bottom=0.05, left=0.125, right=0.95, hspace=0.2, wspace=0.2)
-    #plt.show()
+    plt.show()
     fig.savefig("FTV_full_{0}_Hz_{1}_mv.png".format(index_dict[scatter_folders[z]]["freq"],index_dict[scatter_folders[z]]["amp"]), dpi=500)
     fig.clf()
