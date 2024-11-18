@@ -20,7 +20,7 @@ frequencies=[x+"_Hz" for x in ["3","9","15","21"]]
 amps=["80","280"]
 for i in range(0,len(frequencies)):
     
-    for j in range(0, len(amps)):
+    for j in range(1, len(amps)):
         amp=amps[j]
         files=os.listdir(loc+"FTACV/"+amp)
         print(type(results_dict["FTACV"][frequencies[i]][amp]))
@@ -28,7 +28,7 @@ for i in range(0,len(frequencies)):
             dictionary["Temp"]=278
             dictionary["N_elec"]=1
             dictionary["Surface_coverage"]=1e-10
-            dictionary["area"]=0.07
+            dictionary["area"]=0.036
 
         slurm_class = sci.SingleSlurmSetup(
             "FTACV",
@@ -37,7 +37,7 @@ for i in range(0,len(frequencies)):
         )
         slurm_class.boundaries = {"k0": [5, 5000], 
                             "E0_mean": [-0.45, -0.37],
-                            "Cdl": [1e-6, 5e-4],
+                            "Cdl": [1e-6, 3e-4],
                             "gamma": [1e-11, 8e-10],
                             "Ru": [0.1, 4000],
                             "E0_std":[0.025, 0.15],
@@ -56,7 +56,7 @@ for i in range(0,len(frequencies)):
         slurm_class.top_hat_width=0.25
         slurm_class.Fourier_function="abs"
         slurm_class.Fourier_harmonics=list(range(4, 10))
-        slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha"]
+        slurm_class.optim_list = ["E0_mean","E0_std","k0","gamma", "Ru","Cdl","CdlE1","CdlE2","CdlE3","omega","alpha", "phase"]
         file=[x for x in files if frequencies[i] in x][0]
         
         slurm_class.setup(
@@ -67,7 +67,7 @@ for i in range(0,len(frequencies)):
             threshold=1e-8, 
             unchanged_iterations=200,
             #check_experiments={"PSV":{"file":loc+"PSV/"+data_dict["PSV"][frequencies[i]], "parameters":results_dict["PSV"][frequencies[i]]}},
-            results_directory=frequencies[i]+"_FTV_Fourier_4_"+amp,
+            results_directory=frequencies[i]+"_FTV_Bounded_Fourier_7_"+amp,
             save_csv=False,
             debug=False,
             run=True

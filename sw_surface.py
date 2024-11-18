@@ -14,16 +14,17 @@ strfreqs=[str(x) for x in freqs]
 directions=["anodic","cathodic"]
 directions_dict={"anodic":{"v":1, "E_start":-0.8},"cathodic":{"v":-1, "E_start":0}}
 files=os.listdir(loc)
-i=2+int(sys.argv[1])//2
+i=int(sys.argv[1])//2
 j=int(sys.argv[1])%2
-file=[x for x in files if (strfreqs[i] in x and directions[j] in x and ".csv" in x)][0]
+
+file=[x for x in files if ("_{0}_".format(strfreqs[i]) in x and directions[j] in x and ".csv" in x)][0]
 try:
     data=np.loadtxt(os.path.join(loc, file), delimiter=",")
 except:
     data=np.loadtxt(os.path.join(loc, file))
 
 pot=data[:-1, 0]
-data_current=data[:-1,2]
+data_current=data[:-1,1]
 sw_class=sci.RunSingleExperimentMCMC("SquareWave",
                             {"omega":freqs[i],
                             "scan_increment":2e-3,#abs(pot[1]-pot[0]),
@@ -33,7 +34,7 @@ sw_class=sci.RunSingleExperimentMCMC("SquareWave",
                             "E_start":directions_dict[directions[j]]["E_start"],
                             "Temp":278,
                             "v":directions_dict[directions[j]]["v"],
-                            "area":0.07,
+                            "area":0.036,
                             "N_elec":1,
                             "Surface_coverage":1e-10},
                             square_wave_return="net",
@@ -54,7 +55,7 @@ sw_class.boundaries={
 "E0_std":[0.02, 0.1],
 "k0":[10, 1500],
 "alpha":[0.35, 0.65],
-"gamma":[1e-11, 1e-8],
+"gamma":[5e-12, 1e-8],
 "Cdl":[-1,1],
 "CdlE1":[-1, 1],
 "CdlE2":[-1, 1],
@@ -65,9 +66,10 @@ sw_class.num_cpu=25
 
 sw_class.optim_list=["E0_mean","E0_std","k0","gamma","Cdl"]+extra_keys[:m]+["alpha"]
 combinations=[[x]+["k0"] for x in sw_class.optim_list if "k0" not in x]
-
-paramloc="inference_results_4_9/SWV_{0}/{1}/{2}/PooledResults_2024-10-30/Full_table.txt".format(freqs[i],directions[j],labels[m])
-
+if directions[j]=="anodic":
+ paramloc="inference_results_4_13/SWV_{0}/{1}/{2}/PooledResults_2024-11-14/Full_table.txt".format(freqs[i],directions[j],labels[m])
+else:
+ paramloc="inference_results_4_14/SWV_{0}/{1}/{2}/PooledResults_2024-11-15/Full_table.txt".format(freqs[i],directions[j],labels[m])
 values=dict(zip(sw_class.optim_list, sci._utils.read_param_table(paramloc)[0][:-1]))
 
 log_params=["gamma"]
@@ -97,7 +99,7 @@ for o in range(0, len(combinations)):
         sim_values=[param_dict[x] for x in sw_class.optim_list]
         score=likelihood(sim_values)
         data_array[p,2]=score
-        filename="tmp_scan_results/SWV/scan-{0}-{1}-{2}-{3}".format(freqs[i],directions[j], val1, val2)
+        filename="tmp_scan_results/SWV_linear/scan-{0}-{1}-{2}-{3}".format(freqs[i],directions[j], val1, val2)
     np.savetxt(filename, data_array)
                 
             
