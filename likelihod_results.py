@@ -65,8 +65,8 @@ for p in range(0, 1):
                 #cax.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
                 
             
-            ax[i].axvline(90, color="black", linestyle="--")
-            ax[i].axvline(1000, color="black", linestyle="--")
+            ax[i].axvline(19, color="black", linestyle="--")
+            ax[i].axvline(173, color="black", linestyle="--")
             if i!=0:
                 ax[i].axhline(330, color="black", linestyle="--")
             ax[i].set_xscale("log")

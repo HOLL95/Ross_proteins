@@ -12,3 +12,5 @@ Profile_likelihoods
 *.png
 sw_net_data
 *.csv
+frontier_tests/
+*.npy

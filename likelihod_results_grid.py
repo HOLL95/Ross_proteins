@@ -64,6 +64,14 @@ for i in range(0, len(freqs)):
                     else:
                         file=file[0]
                     data=np.loadtxt(os.path.join(loc,file))
+                    if param1=="gamma" or param1=="Cdl":
+                        y_factor=(0.07/0.036)
+                    else:
+                        y_factor=1
+                    if param2=="gamma" or param2=="Cdl":
+                        x_factor=(0.07/0.036)
+                    else:
+                        x_factor=1
                     Y_vals=sorted(np.unique(data[:,1]))
                     X_vals=sorted(np.unique(data[:,0]))
           
@@ -99,14 +107,14 @@ for i in range(0, len(freqs)):
                 ax.set_yscale("log")
             if param2 in log_params:
                 ax.set_xscale("log")
-            CS=ax.contourf(X,Y,Z, 10,cmap=cm.viridis_r)
+            CS=ax.contourf(X*x_factor,Y*y_factor,Z, 10,cmap=cm.viridis_r)
             
             if param1 in format_params:
-                ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0e'))
-                ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0e'))
+                ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2e'))
+                ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%.2e'))
             if param2 in format_params:
-                ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0e'))
-                ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0e'))
+                ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2e'))
+                ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%.2e'))
            
             if param_counter_1!=len(params)-1:
                 ax.xaxis.set_major_formatter(NullFormatter())
@@ -178,10 +186,10 @@ for i in range(0, len(freqs)):
             #cax.set_title(" ".join(split_title))
     plt.subplots_adjust(top=0.968,
                         bottom=0.098,
-                        left=0.058,
+                        left=0.065,
                         right=0.941,
                         hspace=0.2,
                         wspace=0.148)
     fig.set_size_inches(15, 15)
-    plt.show()
+    #plt.show()
     fig.savefig("Profile_likelihoods/{0}_grid.png".format(freqs[i]), dpi=500)

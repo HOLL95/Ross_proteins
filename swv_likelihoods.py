@@ -6,14 +6,14 @@ from matplotlib import cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.ticker import NullFormatter
 import matplotlib.ticker as ticker
-freqs=[150, 200, 250, 300, 350, 400, 450, 500]
+freqs=[65, 75, 85, 100, 115, 125, 135, 145, 150, 175, 200, 300, 500]
 strfreqs=[str(x) for x in freqs]
 directions=["anodic","cathodic"]
 options=["log","identity"]
 dirlabels=["A","C"]
-params=["E0_mean","E0_std","gamma", "Cdl","CdlE1","alpha"]#
+params=["E0_mean","E0_std","gamma", "Cdl","alpha","CdlE1","CdlE2","CdlE3",]#
 
-loc="Profile_likelihoods/SWV"
+loc="Profile_likelihoods/SWV_net_cubic_set2"
 files=os.listdir(loc)
 
 normalised=["normalised","raw"]
@@ -27,7 +27,7 @@ cmap = plt.get_cmap('viridis_r')
 format_params=["Cdl","gamma"]
 fig, axes=plt.subplots(len(freqs)*2, len(params))
 
-axes[0,0].text(-0.25, 1.28, all_titles[-1],
+axes[0,0].text(-0.25, 1.45, all_titles[-1],
         horizontalalignment='center',
         verticalalignment='center',
         transform=axes[0,0].transAxes, fontweight="bold")
@@ -37,6 +37,7 @@ left=0.115,
 right=0.966,
 hspace=0.2,
 wspace=0.2)
+plt.rc('ytick', labelsize=10)
 fig.set_size_inches(7, 15)
 for i in range(0, len(freqs)):
     axis=fig.add_subplot(len(freqs),len(params),(i*len(params))+1)
@@ -72,7 +73,7 @@ for i in range(0, len(freqs)):
             Y_vals=sorted(np.unique(data[:,1]))
             X_vals=sorted(np.unique(data[:,0]))
 
-            plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+            plt.setp(ax.get_xticklabels(), rotation=55, ha='right')
             if options[p]=="log":
                 data[:,2]=np.log10(np.abs(data[:,2]))
             min_score=min(data[:,2])
@@ -96,11 +97,12 @@ for i in range(0, len(freqs)):
             X, Y = np.meshgrid(X_vals, Y_vals)
             Z=results_array*factor#np.log10(abs(results_array))
             
-            CS=ax.contourf(X,Y,Z, 15,cmap=cm.viridis_r)
+            CS=ax.contourf(X,np.log10(Y),Z, 15,cmap=cm.viridis_r)
             if param1 in log_params:
-                ax.set_xscale("log")
-            
-            ax.yaxis.set_major_formatter(lambda x, pos:"$10^{%.1f}$"% np.log10(x) if x>0 else "0" )
+                #ax.set_xscale("log")
+                ax.xaxis.set_major_formatter(lambda x, pos:"$10^{%.1f}$"% np.log10(x) if x>0 else "0" )
+            #ax.set_yscale("log")
+            #
             if param_counter_1!=0:
                 ax.set_yticks([])
           
@@ -111,9 +113,10 @@ for i in range(0, len(freqs)):
             if (i*2)+j!=(len(freqs)*2)-1:
                 ax.set_xticks([])
             else:
+                all_titles[3]="$C_{dl}$"
                 ax.set_xlabel(all_titles[param_counter_1])
             if i==0 and param_counter_1==0 and j==0:
-                colorax = fig.add_axes([0.45,0.03,0.35,0.025])
+                colorax = fig.add_axes([0.45,0.03,0.35,0.01])
                 fig.colorbar(CS, cax=colorax, orientation='horizontal')
                 colorax.set_xlim([0, 100])
                 colorax.text(-0.55, 0.5, r"Normalised fraction of $\log|\mathcal{L}(\theta | I(t))|$",
@@ -196,7 +199,25 @@ for i in range(0, len(freqs)):
             #ax[i].set_xlabel("$R_u$ ($\\Omega$)")
             #split_title=freqs[i].split("_")
             #cax.set_title(" ".join(split_title))"""
-        
+
+for i in range(0, len(params)):
+    first_xlim=axes[0,i].get_xlim()
+    consensus_xlim=first_xlim
+    for j in range(1, len(freqs)*2):
+        curr_xlim=axes[j,i].get_xlim()
+        consensus_xlim=[max(curr_xlim[0], consensus_xlim[0]), min([curr_xlim[1], consensus_xlim[1]])]
+    for j in range(0, len(freqs)*2):
+        axes[j,i].set_xlim(*consensus_xlim)
+for i in range(0, len(params)):
+    for j in range(0, len(freqs)*2):
+        axes[j,i].set_ylim([1.25, 3.25])
+        axes[j,i].set_yticks([2, 3])
+        if i==0:
+            axes[j,i].yaxis.set_major_formatter(lambda x, pos:"$10^{%d}$"% x if x>0 else "0" )
+            #plt.setp(ax.get_yticklabels(), rotation=55, ha='right')
+        else:
+            axes[j,i].set_yticks([])
+
 fig.set_size_inches(7, 15)
 plt.show()
 fig.savefig("Profile_likelihoods/SWV_grid.png".format(freqs[i]), dpi=500)

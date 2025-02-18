@@ -48,11 +48,12 @@ for i in range(0, len(file_names)):
         ax=axes[*index_dict[titles[j]]]
         if titles[j] in m_titles:
             continue
-        if "Gamma" in titles[j]:
+        if "Gamma" in titles[j] or "C_{dl}" in titles[j]:
             area_factor=0.07/0.036
+        
         else:
             area_factor=1
-        scatterplt=ax.scatter([xvals[i]]*len(idx[0]), area_factor*np.flip(best[idx, j][0]), color=cmap(list(np.linspace(0, 1, 6))), marker=markers[i])
+        scatterplt=ax.scatter([xvals[i]]*len(idx[0]), np.flip(best[idx, j][0]), color=cmap(list(np.linspace(0, 1, 6))), marker=markers[i])
         #if j==0:
         if titles[j]=='$C_{dl}$ (F)':
              ax.set_ylabel('$C_{dl}$ (F cm$^{-2}$)')
@@ -140,7 +141,10 @@ for p in range(0, 1):
             X, Y = np.meshgrid(r_vals, k_vals)
             
             Z=results_array*factor#np.log10(abs(results_array))
-            CS=likelihood_ax[i].contourf(X,Y,Z, 15,cmap=cm.viridis_r)
+            if i==2:
+                CS=likelihood_ax[i].contourf(X*(255/185),Y,Z, 15,cmap=cm.viridis_r)
+            else:
+                CS=likelihood_ax[i].contourf(X,Y,Z, 15,cmap=cm.viridis_r)
             current_ytick=list(likelihood_ax[i].get_ylim())
             if i==0:
                 existing_ytick=current_ytick
@@ -170,17 +174,20 @@ for p in range(0, 1):
             if i==0:
                 likelihood_ax[i].set_ylabel("$k^0$ ($s^{-1}$)")
             else:
-                likelihood_ax[i].axvline(330, color="black", linestyle="--")
+                likelihood_ax[i].axvline(309, color="black", linestyle="--")
                 #likelihood_ax[i].set_yticks([])
-            likelihood_ax[i].axhline(620, color="black", linestyle="--")
-            likelihood_ax[i].axhline(1600, color="black", linestyle="--")
+            #likelihood_ax[i].axhline(50, color="black", linestyle="--")
+            likelihood_ax[i].axhline(123, color="black", linestyle="--")
             likelihood_ax[i].set_xlabel("$R_u$ ($\\Omega$)")
             split_title=freqs[i].split("_")
             likelihood_ax[i].set_title(" ".join(split_title))
             
-for ax in likelihood_ax:
-    ax.xaxis.set_major_formatter(lambda x, pos:"$10^{%.1f}$"% np.log10(x) if x>0 else "0" )
-    plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+for ax in likelihood_ax[:2]:
+    if i==0:
+        ax.xaxis.set_major_formatter(lambda x, pos:"$10^{%.2f}$"% np.log10(x) if x>0 else "0" )
+    else:
+        ax.xaxis.set_major_formatter(lambda x, pos:"$10^{%.1f}$"% np.log10(x) if x>0 else "0" )
+    #plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
        
 
 plt.subplots_adjust(
