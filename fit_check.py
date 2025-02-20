@@ -18,7 +18,7 @@ results_dict=experiments_dict
 loc="/users/hll537/Experimental_data/set2/"
 frequencies=[x+"_Hz" for x in ["3","9","15","21"]]
 amps=["80","280"]
-for i in range(0,len(frequencies)):
+for i in range(2,3):
     
     for j in range(1, len(amps)):
         amp=amps[j]
@@ -67,7 +67,7 @@ for i in range(0,len(frequencies)):
             threshold=1e-8, 
             unchanged_iterations=200,
             #check_experiments={"PSV":{"file":loc+"PSV/"+data_dict["PSV"][frequencies[i]], "parameters":results_dict["PSV"][frequencies[i]]}},
-            results_directory=frequencies[i]+"_FTV_Bounded_Fourier_8_"+amp,
+            results_directory="fitcheck",
             save_csv=False,
             debug=False,
             run=True

@@ -18,8 +18,8 @@ import sys
 
 loc="/home/henryll/Documents/Experimental_data/Nat/joint"
 #loc="/users/hll537/Experimental_data/jamie/set1"
+loc="/users/hll537/Experimental_data/M4D2_joint"
 files =os.listdir(loc)
-
 run=int(sys.argv[1])
 sw_freqs=[65, 75, 85, 100, 115, 125, 135, 145, 150, 175, 200, 300,  400, 500]
 experiments_dict={"FTACV":{"3_Hz":{}, "9_Hz":{},"15_Hz":{}, "21_Hz":{}}, "SWV":{}}
@@ -105,9 +105,9 @@ class Experiment_evaluation:
                         "Ru":[0.1, 5e3],
                         "gamma":[1e-11, 1e-9],
                         "Cdl":[0,1e-3],
-                        "CdlE1":[-0.05, 0.05],
-                        "CdlE2":[-0.01, 0.01],
-                        "CdlE3":[-0.005, 0.005],
+                        "CdlE1":[-5e-5, 5e-5],
+                        "CdlE2":[-1e-5, 1e-5],
+                        "CdlE3":[-1e-6, 1e-6],
                         "alpha":[0.4, 0.6]
                         }
                     strfreq=cond_1.split("_")[0]
@@ -343,6 +343,7 @@ param_arg=[
         }
         for x in range(0,len(param_dict["optimisation"]))
     ]
+param_arg[1]["bounds"]=[0, 0.2]
 objectives={}
 print_tresh={}
 for key in grouping_keys:
@@ -396,7 +397,7 @@ def save_current_front(input_dictionary):
     np.save("frontier_results/set_{2}/fronts/{0}_{1}".format(obj1, obj2, input_dictionary["run"]), {"frontier":frontier})
 Path(os.path.join(directory, "frontier_results","set_{0}".format(run), "fronts")).mkdir(parents=True, exist_ok=True)
     
-for i in range(200):
+for i in range(130):
     parameters, trial_index = ax_client.get_next_trial()
     # Local evaluation here can be replaced with deployment to external system.
    
@@ -404,9 +405,9 @@ for i in range(200):
     
 
     #print("pre_saving")
-    np.save("frontier_results/set_{1}/exp_iteration_{0}.npy".format(i, run), {"saved_frontier":ax_client})
+    np.save("frontier_results/set_{1}/ax_client.npy".format(i, run), {"saved_frontier":ax_client})
     if i>non_para_iterations:
-        Path(os.path.join(directory, "frontier_results","set_{0}".format(run), "iteration_{0}".format(i))).mkdir(parents=True, exist_ok=True)
+        #Path(os.path.join(directory, "frontier_results","set_{0}".format(run), "iteration_{0}".format(i))).mkdir(parents=True, exist_ok=True)
         with executor.batch():
             for j in range(0, len(combinations)):
                 save_dict={}

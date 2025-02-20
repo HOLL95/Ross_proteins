@@ -14,3 +14,7 @@ sw_net_data
 *.csv
 frontier_tests/
 *.npy
+frontier_results
+*.gif
+tmp_tests
+fitcheck
