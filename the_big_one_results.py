@@ -318,14 +318,20 @@ class Experiment_evaluation:
                                 results_dict[groupkey]=sim_err/(omega)
                     
         return results_dict
-    def results(self, parameters, group_dict, harmonics, mode):
+    def results(self, parameters, group_dict, harmonics, mode, optimal_score=None, save=False):
         results_dict={}
         group_keys=list(group_dict.keys())
         subplots=sci._utils.det_subplots(len(group_keys))
         fig, ax=plt.subplots(*subplots)
         plot_dict={group_keys[i]:{"len":0, "axis":ax[i%subplots[0], i//subplots[0]], "maximum":0, "count":0} for i in range(0, len(group_keys))}
         ft_plot_dict={}
-        
+        for key in group_keys:
+            if optimal_score==key:
+                for axis in ['top','bottom','left','right']:
+                    plot_dict[key]["axis"].spines[axis].set_linewidth(4)
+
+                    # increase tick width
+                    plot_dict[key]["axis"].tick_params(width=4)
         for key in self.classes.keys():
             experiment, cond_1, cond_2=key.split("-")
             freq=int(cond_1.split("_")[0])
@@ -403,6 +409,9 @@ class Experiment_evaluation:
                                 
                                 for i in range(0, len(harmonics)):
                                     offset=(len(harmonics)-i)*1.1*plot_dict[groupkey]["maximum"]
+                                    ratio=plot_dict[groupkey]["maximum"]/(max(np.max(datah[i,:]), np.max(simh[i,:])))
+                                    datah[i,:]*=ratio
+                                    simh[i,:]*=ratio
                                     if mode=="residual":
                                         axis.plot(xaxis, (datah[i,:]-simh[i,:])+offset, color=sci._utils.colours[plot_dict[groupkey]["count"]])
                                     else:
@@ -411,8 +420,16 @@ class Experiment_evaluation:
                                 plot_dict[groupkey]["count"]+=1
                                 
                                 plot_dict[groupkey]["len"]+=len(data)
-
-        plt.show()
+        fig.set_size_inches(16,10)
+        plt.tight_layout()
+        #plt.show()
+        if save==True:
+            if optimal_score is not None:
+                savefile=optimal_score+".png"
+            else:
+                savefile="results.png"
+            fig.savefig(savefile, dpi=500)
+    
 param_dict={"SWV":SWV_parameters, "FTACV":FTV_parameters, "optimisation":["E0_mean", "E0_mean_offset","E0_std_1", "E0_std_2","k0","gamma_1", "gamma_2","Ru", "Cdl","CdlE1","CdlE2","CdlE3","alpha"]}
 
 grouping_list=[{"experiment":"FTACV", "match":"80", "type":"ts"},
@@ -481,7 +498,7 @@ for key in keyr:
                 best_params[key]["params"]=[results[key][i][arm][key2] for key2 in param_dict["optimisation"]]
                 best_params[key]["arm"]=arm
     
-    simclass.results(best_params[key]["params"], group_dict, list(range(3, 8)), "normal")
+    simclass.results(best_params[key]["params"], group_dict, list(range(3, 8)), "normal", key, save=True)
     print(simclass.recover_parameters(best_params[key]["params"], experiment_keys[key], "un_norm"))
     #simclass.results(best_params[key]["params"], list(range(2, 10)))
 figure, axis=plt.subplots(2,3)

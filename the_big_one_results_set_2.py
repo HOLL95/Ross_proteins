@@ -18,9 +18,9 @@ import sys
 
 loc="/home/henryll/Documents/Experimental_data/Nat/joint"
 #loc="/users/hll537/Experimental_data/jamie/set1"
-loc="/users/hll537/Experimental_data/M4D2_joint"
 files =os.listdir(loc)
-run=int(sys.argv[1])
+
+
 sw_freqs=[65, 75, 85, 100, 115, 125, 135, 145, 150, 175, 200, 300,  400, 500]
 experiments_dict={"FTACV":{"3_Hz":{}, "9_Hz":{},"15_Hz":{}, "21_Hz":{}}, "SWV":{}}
 #experiments_dict['FTACV']['3_Hz']['80']= {'E_start': np.float64(-0.8902481705989678), 'E_reverse': np.float64(-0.0005663458462876747), 'omega': np.float64(3.0347196895539086), 'phase': np.float64(6.059035018632212), 'delta_E': np.float64(0.07653233662675293), 'v': np.float64(0.05954572063421371)}
@@ -249,6 +249,54 @@ class Experiment_evaluation:
                     simvals.append(valuedict[param+index])
         
         return simvals
+    def recover_parameters(self, parameters, experiment_key, norm):
+        print(experiment_key)
+        experiment, cond_1, cond_2=experiment_key.split("-")
+        vals=self.parse_input(parameters, experiment, cond_2)
+        if norm=="norm":
+            return vals
+        elif norm=="un_norm":
+            return self.classes[experiment_key]["class"].change_normalisation_group(vals, "un_norm")
+    
+    def parse_input(self, parameters, key, cond_2):
+        in_optimisation=False
+        try:
+            values=copy.deepcopy([parameters.get(x) for x in self.parameter_names["optimisation"]])
+            in_optimisation=True
+        except:
+            pass
+        if in_optimisation==True:
+            if key=="FTACV":
+                index="_1"
+            else:
+                index="_2"
+            simvals=[]
+            for param in self.parameter_names[key]:
+                if param in self.parameter_names["optimisation"]:
+                    simvals.append(parameters.get(param))
+                else:
+                    simvals.append(parameters.get(param+index))
+        else:
+
+            valuedict=dict(zip(self.parameter_names["optimisation"], copy.deepcopy(parameters)))
+            
+            if key=="FTACV":
+                index="_1"
+            else:
+                index="_2"
+            simvals=[]
+            for param in self.parameter_names[key]:
+                if param in self.parameter_names["optimisation"]:
+                    if param=="E0_mean":
+                        if cond_2=="anodic":
+                            valuedict[param]+=valuedict["E0_mean_offset"]
+                        elif cond_2=="cathodic":
+                            valuedict[param]-=valuedict["E0_mean_offset"]
+                    simvals.append(valuedict[param])
+                else:
+                    simvals.append(valuedict[param+index])
+        
+        return simvals
     
     def evaluate(self, parameters, group_dict):
         results_dict={}
@@ -317,6 +365,130 @@ class Experiment_evaluation:
                                 results_dict[groupkey]=sim_err/(omega)
                     
         return results_dict
+    def results(self, parameters, group_dict, harmonics, mode, optimal_score=None, save=False):
+        results_dict={}
+        group_keys=list(group_dict.keys())
+        subplots=sci._utils.det_subplots(len(group_keys))
+        fig, ax=plt.subplots(*subplots)
+        plot_dict={group_keys[i]:{"len":0, "axis":ax[i%subplots[0], i//subplots[0]], "maximum":0, "count":0} for i in range(0, len(group_keys))}
+        ft_plot_dict={}
+        
+        # Highlight optimal score if provided
+        for key in group_keys:
+            if optimal_score==key:
+                for axis in ['top','bottom','left','right']:
+                    plot_dict[key]["axis"].spines[axis].set_linewidth(4)
+                    plot_dict[key]["axis"].tick_params(width=4)
+                    
+        for key in self.classes.keys():
+            experiment, cond_1, cond_2=key.split("-")
+            freq=int(cond_1.split("_")[0])
+            values=self.parse_input(parameters, experiment, cond_2)
+            data=self.classes[key]["data"]
+            omega=self.classes[key]["class"]._internal_memory["input_parameters"]["omega"]
+            
+            if experiment=="FTACV":
+                sim=self.classes[key]["class"].simulate(values, self.classes[key]["times"])
+                for groupkey in group_dict.keys():
+                    plot_dict[groupkey]["axis"].set_title(groupkey)
+                    if group_dict[groupkey]["experiment"]=="FTACV":
+                        if group_dict[groupkey]["match"]==cond_2:
+                            right_exp=False
+                            if "greater" in groupkey:
+                                if int(group_dict[groupkey]["greater"])<freq:
+                                    right_exp=True
+                            elif "lesser" in groupkey:
+                                if int(group_dict[groupkey]["lesser"])>=freq:
+                                    right_exp=True
+                            if right_exp==True:
+                                if group_dict[groupkey]["type"]=="ts":
+                                    deltaE=self.classes[key]["class"]._internal_memory["input_parameters"]["delta_E"]
+                                    xaxis=range(plot_dict[groupkey]["len"], plot_dict[groupkey]["len"]+len(data))
+                                    data_norm=data/(omega*deltaE)
+                                    sim_norm=sim/(omega*deltaE)
+                                    if mode=="residual":
+                                        plot_dict[groupkey]["axis"].plot(xaxis, data_norm-sim_norm)
+                                    else:
+                                        plot_dict[groupkey]["axis"].plot(xaxis, data_norm)
+                                        plot_dict[groupkey]["axis"].plot(xaxis, sim_norm, linestyle="--", color="black", alpha=0.5)
+                                    plot_dict[groupkey]["len"]+=len(data)
+
+                                if group_dict[groupkey]["type"]=="ft":
+                                    deltaE=self.classes[key]["class"]._internal_memory["input_parameters"]["delta_E"]
+                                    data_harmonics=np.abs(sci.plot.generate_harmonics(self.classes[key]["times"], self.classes[key]["data"]/(deltaE*omega), hanning=True, one_sided=True, harmonics=harmonics))
+                                    sim_harmonics=np.abs(sci.plot.generate_harmonics(self.classes[key]["times"], sim/(deltaE*omega), hanning=True, one_sided=True, harmonics=harmonics))
+                                    ft_plot_dict[key]={"data":data_harmonics, "sim_harmonics":sim_harmonics}
+                                    maximum=max(max(data_harmonics[0,:]), max(sim_harmonics[0,:]))
+                                    plot_dict[groupkey]["maximum"]=max(maximum, plot_dict[groupkey]["maximum"])
+
+            elif experiment=="SWV":
+                sim=self.classes[key]["class"].simulate(values, self.classes[key]["times"])
+                for groupkey in group_dict.keys():
+                    if group_dict[groupkey]["experiment"]=="SWV":
+                        right_exp=False
+                        if "greater" in groupkey:
+                            if int(group_dict[groupkey]["greater"])<freq:
+                                right_exp=True
+                        elif "lesser" in groupkey:
+                            if int(group_dict[groupkey]["lesser"])>=freq:
+                                right_exp=True
+                        if right_exp==True:
+                            xaxis=range(plot_dict[groupkey]["len"], plot_dict[groupkey]["len"]+len(data))
+                            data_norm=data/omega
+                            sim_norm=sim/omega
+                            if mode=="residual":
+                                plot_dict[groupkey]["axis"].plot(xaxis, data_norm-sim_norm)
+                            else:
+                                plot_dict[groupkey]["axis"].plot(xaxis, data_norm)
+                                plot_dict[groupkey]["axis"].plot(xaxis, sim_norm, linestyle="--", color="black", alpha=0.5)
+                            plot_dict[groupkey]["len"]+=len(data)
+
+        # Plot FT harmonics
+        for key in self.classes.keys():
+            data=self.classes[key]["data"]
+            experiment, cond_1, cond_2=key.split("-")
+            freq=int(cond_1.split("_")[0])
+            for groupkey in group_dict.keys():
+                if group_dict[groupkey]["experiment"]=="FTACV":
+                    if group_dict[groupkey]["match"]==cond_2:
+                        right_exp=False
+                        if "greater" in groupkey:
+                            if int(group_dict[groupkey]["greater"])<freq:
+                                right_exp=True
+                        elif "lesser" in groupkey:
+                            if int(group_dict[groupkey]["lesser"])>=freq:
+                                right_exp=True
+                        if right_exp==True and group_dict[groupkey]["type"]=="ft":
+                            axis=plot_dict[groupkey]["axis"]
+                            xaxis=range(plot_dict[groupkey]["len"], plot_dict[groupkey]["len"]+len(data))
+                            datah=ft_plot_dict[key]["data"]
+                            simh=ft_plot_dict[key]["sim_harmonics"]
+                            
+                            for i in range(0, len(harmonics)):
+                                offset=(len(harmonics)-i)*1.1*plot_dict[groupkey]["maximum"]
+                                ratio=plot_dict[groupkey]["maximum"]/(max(np.max(datah[i,:]), np.max(simh[i,:])))
+                                datah[i,:]*=ratio
+                                simh[i,:]*=ratio
+                                if mode=="residual":
+                                    axis.plot(xaxis, (datah[i,:]-simh[i,:])+offset, color=sci._utils.colours[plot_dict[groupkey]["count"]])
+                                else:
+                                    axis.plot(xaxis, datah[i,:]+offset, color=sci._utils.colours[plot_dict[groupkey]["count"]])
+                                    axis.plot(xaxis, simh[i,:]+offset, color="black", linestyle="--")
+                            plot_dict[groupkey]["count"]+=1
+                            plot_dict[groupkey]["len"]+=len(data)
+
+        # Set figure size and save if requested
+        fig.set_size_inches(16,10)
+        plt.tight_layout()
+        #plt.show()
+        if save==True:
+            if optimal_score is not None:
+                savefile=optimal_score+".png"
+            else:
+                savefile="results.png"
+            fig.savefig(savefile, dpi=500)
+        return fig, ax
+    
 param_dict={"SWV":SWV_parameters, "FTACV":FTV_parameters, "optimisation":["E0_mean", "E0_mean_offset","E0_std_1", "E0_std_2","k0","gamma_1", "gamma_2","Ru", "Cdl","CdlE1","CdlE2","CdlE3","alpha"]}
 
 grouping_list=[
@@ -329,98 +501,74 @@ grouping_list=[
 grouping_keys=[]
 for grouping in grouping_list:
 
-    grouping_keys.append("&".join(["{0}-{1}".format(x, grouping[x]) for x in grouping.keys()]))
+    grouping_keys.append("-".join(["{0}-{1}".format(x, grouping[x]) for x in grouping.keys()]))
+
 
 group_dict=dict(zip(grouping_keys, grouping_list))
+linestart=len(r"Parameterization:</em><br>")
+save=False
+if save==True:
+    results={key:[] for key in grouping_keys}
+    for m in range(0, 11):
+        #files=os.listdir("/home/henryll/Documents/Frontier_results/M4D2_inference/set_{0}".format(m))
+        
+        
+        
+       
+        ax_client=np.load("/home/henryll/Documents/Frontier_results/M4D2_inference/set_2_inf/set_{0}/ax_client.npy".format(m), allow_pickle=True).item()["saved_frontier"]
+        print(ax_client.experiment.optimization_config.objective.objectives)
+        #best_parameters= ax_client.get_pareto_optimal_parameters()
+        #print(best_parameters)
+        #frontier=load_pareto("/home/henryll/Documents/Jamie_protein/init_pareto_results/set_1/iteration_{0}/2.98_ts_2.98_ft.npy".format(iteration), parameters)
 
+        for z in range(0, len(grouping_keys)):
+            values=ax_client.get_contour_plot(param_x="k0", param_y="Cdl", metric_name=grouping_keys[z])
+            arms=values[0]["data"][2]["text"]
+            value_dict={}
+            for i in range(0, len(arms)):
+                key="arm{0}".format(i+1)
+                first_split=arms[i].split("<br>")
+                value_dict[key]={}
+                value_dict[key]["score"]=float(first_split[1][first_split[1].index(":")+1:first_split[1].index("(")])
+                
+                for j in range(2, len(first_split)):
+                    param_split=first_split[j].split(":")
+                    value_dict[key][param_split[0]]=float(param_split[1])
+                results[grouping_keys[z]].append(value_dict)
+    np.save("init_pareto_results/save_points_set2.npy", results)
+else:
+    results=np.load("init_pareto_results/save_points_set2.npy", allow_pickle=True).item()
 simclass=Experiment_evaluation(param_dict, loc, experiments_dict)
-ax_client = AxClient()
-thresholds=simclass.evaluate([0.5 for x in param_dict["optimisation"]], group_dict)
+best_params={key:{} for key in grouping_keys}
+all_scores={key:[] for key in grouping_keys}
+experiment_keys=dict(zip(grouping_keys, [ "FTACV-3_Hz-280","FTACV-3_Hz-280","FTACV-3_Hz-280","FTACV-3_Hz-280", "SWV-135_Hz-anodic","SWV-135_Hz-cathodic"]))
+keyr=list(results.keys())
+print
+for key in keyr:
+    bestscore=1e6
 
-param_arg=[
-        {
-            "name": param_dict["optimisation"][x],
-            "type": "range",
-            "value_type":"float",
-            "bounds": [0.0, 1.0],
-        }
-        for x in range(0,len(param_dict["optimisation"]))
-    ]
-param_arg[1]["bounds"]=[0, 0.2]
-objectives={}
-print_tresh={}
-for key in grouping_keys:
-
-    objectives[key]=ObjectiveProperties(minimize=True, threshold=thresholds[key])
+    for i in range(0, len(results[key])):
+        for arm in results[key][i].keys():
+            all_scores[key].append(results[key][i][arm]["score"])
+            if results[key][i][arm]["score"]<bestscore:
+                bestscore=results[key][i][arm]["score"]
+                best_params[key]["score"]=bestscore
+                best_params[key]["params"]=[results[key][i][arm][key2] for key2 in param_dict["optimisation"]]
+                best_params[key]["arm"]=arm
     
-
-
-ax_client.create_experiment(
-    name="Multi_experiment",
-    parameters=param_arg,
-    objectives=objectives,
-    overwrite_existing_experiment=False,
-    is_test=True,
-
-)
-paralell=ax_client.get_max_parallelism()
-non_para_iterations=paralell[0][0]
-directory=os.getcwd()
-executor = AutoExecutor(folder=os.path.join(directory, "tmp_tests")) 
-executor.update_parameters(timeout_min=60) # Timeout of the slurm job. Not including slurm scheduling delay.
-
-executor.update_parameters(cpus_per_task=2)
-executor.update_parameters(slurm_partition="nodes")
-executor.update_parameters(slurm_job_name="mo_test")
-executor.update_parameters(slurm_account="chem-electro-2024")
-executor.update_parameters(mem_gb=2)
-objectives = ax_client.experiment.optimization_config.objective.objectives
-all_metrics=[objectives[x].metric for x in range(0, len(objectives))]
-all_keys=[vars(x)["_name"] for x in all_metrics]
-metric_dict=dict(zip(all_keys, all_metrics))
-combinations=list(itertools.combinations(all_keys, 2))
-print(combinations)
-def save_current_front(input_dictionary):
-    
-    
-    metrics=input_dictionary["metrics"]
-
-    
-    obj1=input_dictionary["combinations"][0]
-    obj2=input_dictionary["combinations"][1]
-    frontier = compute_posterior_pareto_frontier(
-        experiment=input_dictionary["experiment"],
-        #data=ax_client.experiment.fetch_data(),
-        primary_objective=metrics[obj1],
-        secondary_objective=metrics[obj2],
-        absolute_metrics=[obj1, obj2],
-        num_points=50,
-    )
-
-    np.save("frontier_results/set_{2}/fronts/{0}_{1}".format(obj1, obj2, input_dictionary["run"]), {"frontier":frontier})
-Path(os.path.join(directory, "frontier_results","set_{0}".format(run), "fronts")).mkdir(parents=True, exist_ok=True)
-    
-for i in range(130):
-    parameters, trial_index = ax_client.get_next_trial()
-    # Local evaluation here can be replaced with deployment to external system.
-   
-    ax_client.complete_trial(trial_index=trial_index, raw_data=simclass.evaluate(parameters, group_dict))
-    
-
-    #print("pre_saving")
-    np.save("frontier_results/set_{1}/ax_client.npy".format(i, run), {"saved_frontier":ax_client})
-    if i>non_para_iterations:
-        #Path(os.path.join(directory, "frontier_results","set_{0}".format(run), "iteration_{0}".format(i))).mkdir(parents=True, exist_ok=True)
-        with executor.batch():
-            for j in range(0, len(combinations)):
-                save_dict={}
-                save_dict["metrics"]=metric_dict
-                save_dict["combinations"]=combinations[j]
-                save_dict["experiment"]=ax_client.experiment
-                save_dict["run"]=run
-                save_dict["iteration"]=i
-                executor.submit(save_current_front, save_dict)
-    #print("Saving")
+    #simclass.results(best_params[key]["params"], group_dict, list(range(3, 8)), "normal", key, save=True)
+    print(simclass.recover_parameters(best_params[key]["params"], experiment_keys[key], "un_norm"))
+    #simclass.results(best_params[key]["params"], list(range(2, 10)))
+figure, axis=plt.subplots(2,3)
+listkey=list(results.keys())
+for i in range(0, len(listkey)):
+    ax1=axis[i%2, i//2]
+    ax1.semilogy(sorted(all_scores[listkey[i]]))
+    ax1.set_title(listkey[i])
+plt.show()
 
 
 
+
+
+#
