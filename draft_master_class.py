@@ -6,7 +6,7 @@ from scipy.interpolate import CubicSpline
 import itertools
 import Surface_confined_inference as sci
 from pathlib import Path
-
+import tabulate
 
 class ExperimentEvaluation:
     """
@@ -481,6 +481,7 @@ class ExperimentEvaluation:
         return score_dict
                    
     def scale(self, value, groupkey, classkey):
+        value=copy.deepcopy(value)
         cls=self.classes[classkey]["class"]
         if "divide" in self.group_dict[groupkey]["scaling"]:
             for param in self.group_dict[groupkey]["scaling"]["divide"]:
@@ -489,7 +490,7 @@ class ExperimentEvaluation:
             for param in self.group_dict[groupkey]["scaling"]["multiply"]:
                 value*=cls._internal_memory["input_parameters"][param]  
         return value
-    def check_grouping(self,):
+    def check_grouping(self,show_legend=False):
         if len(self.grouping_keys)%2!=0:
             num_cols=(len(self.grouping_keys)+1)/2
             fig,axes=plt.subplots(2, int(num_cols))
@@ -504,8 +505,9 @@ class ExperimentEvaluation:
             all_data=[self.scale(self.classes[x]["data"], groupkey, x) for x in self.experiment_grouping[groupkey]]
             all_times=[self.classes[x]["times"] for x in self.experiment_grouping[groupkey]]
             all_zeros=[self.scale(self.classes[x]["zero_sim"], groupkey, x) for x in self.experiment_grouping[groupkey]]
+            label_list=[",".join(x.split("-")[1:]) for x in self.experiment_grouping[groupkey]]
             if "type:ft" not in groupkey:
-                self.plot_stacked_time(ax, all_data, label_list=self.experiment_grouping[groupkey])
+                self.plot_stacked_time(ax, all_data, label_list=label_list)
                 self.plot_stacked_time(ax, all_zeros, alpha=0.75, linestyle="--", colour="black")
             else:
                 data_harmonics=[
@@ -519,10 +521,31 @@ class ExperimentEvaluation:
                 self.plot_stacked_harmonics(ax, [data_harmonics, zero_harmonics], alpha=[1,0.75], 
                                                                                 linestyle=["-", "--"], 
                                                                                 colour=[None, "black"], 
-                                                                                label_list=self.experiment_grouping[groupkey],
+                                                                                label_list=label_list,
                                                                                 scale=True)
-        plt.show()
 
+            if show_legend==True:
+                self.add_legend(ax, groupkey)
+
+        fig.set_size_inches(16, 12)
+        plt.tight_layout()
+        plt.show()
+    def add_legend(self, ax, groupkey, target_cols=3):
+        num_labels=len(self.experiment_grouping[groupkey])
+        if num_labels<target_cols:
+            num_cols=num_labels
+            height=1
+        else:
+            num_cols=target_cols
+            if num_labels%target_cols!=0:
+                extra=1
+            else:
+                extra=0
+            height=int(num_labels//target_cols)+extra
+        ylim=ax.get_ylim()
+        
+        ax.set_ylim([ylim[0]-(abs(max(ylim)))*0.1*height, ylim[1]])
+        ax.legend(loc="lower center", bbox_to_anchor=[0.5, 0], ncols=num_cols, handlelength=1)
                 
 
     def plot_stacked_time(self, axis, data_list, **kwargs):
@@ -599,7 +622,15 @@ class ExperimentEvaluation:
                     axis.plot(xaxis, ratio*arrayed[j][m][i,:]+offset, label=label, alpha=kwargs["alpha"][j], linestyle=kwargs["linestyle"][j], color=colour)
             current_len+=len(arrayed[j][m][i,:])
         axis.set_xticks([])
-    def results(self, parameters, target_key=None):
+    def results(self, parameters, **kwargs):
+        if "target_key" not in kwargs:
+            target_key=None
+        else:
+            target_key=kwargs["target_key"]
+        if "savename" not in kwargs:
+            kwargs["savename"]=None
+        if "show_legend" not in kwargs:
+            kwargs["show_legend"]=False
         if len(self.grouping_keys)%2!=0:
             num_cols=(len(self.grouping_keys)+1)/2
             fig,axes=plt.subplots(2, int(num_cols))
@@ -620,8 +651,9 @@ class ExperimentEvaluation:
             all_data=[self.scale(self.classes[x]["data"], groupkey, x) for x in self.experiment_grouping[groupkey]]
             all_times=[self.classes[x]["times"] for x in self.experiment_grouping[groupkey]]
             all_simulations=[self.scale(simulation_values[x], groupkey, x) for x in self.experiment_grouping[groupkey]]
+            label_list=[",".join(x.split("-")[1:]) for x in self.experiment_grouping[groupkey]]
             if "type:ft" not in groupkey:
-                self.plot_stacked_time(ax, all_data, label_list=self.experiment_grouping[groupkey])
+                self.plot_stacked_time(ax, all_data, label_list=label_list)
                 self.plot_stacked_time(ax, all_simulations, alpha=0.75, linestyle="--", colour="black")
             else:
                 data_harmonics=[
@@ -635,20 +667,94 @@ class ExperimentEvaluation:
                 self.plot_stacked_harmonics(ax, [data_harmonics, sim_harmonics], alpha=[1,0.75], 
                                                                                 linestyle=["-", "--"], 
                                                                                 colour=[None, "black"], 
-                                                                                label_list=self.experiment_grouping[groupkey],
+                                                                                label_list=label_list,
                                                                                 scale=True)
-        plt.show()
-        #axis.set_yticks([])
-      
+            if kwargs["show_legend"]==True:
+                self.add_legend(ax, groupkey)
+                                                                            
+        fig.set_size_inches(16, 12)
+
+        plt.tight_layout()
+        if kwargs["savename"] is not None:
+            fig.savefig(kwargs["savename"], dpi=500)
+            plt.close()
+        else:
+            plt.show()
+    def ax_results_extraction(self, dataloc, num_sets, saveloc, client_name="ax_client.npy"):
+        results={key:[] for key in self.grouping_keys}
+        linestart=len(r"Parameterization:</em><br>")
+
+        for m in range(0, num_sets):
+            ax_client=np.load("{0}/set_{1}/{2}".format(dataloc,m, client_name), allow_pickle=True).item()["saved_frontier"]
+            for z in range(0, len(self.grouping_keys)):
+                values=ax_client.get_contour_plot(param_x="k0", param_y="alpha", metric_name=self.grouping_keys[z])
+                arms=values[0]["data"][2]["text"]
+                value_dict={}
+                for i in range(0, len(arms)):
+                    key="arm{0}".format(i+1)
+                    first_split=arms[i].split("<br>")
+                    value_dict[key]={}
+                    value_dict[key]["score"]=float(first_split[1][first_split[1].index(": ")+1:first_split[1].index("(")])
+                    
+                    for j in range(2, len(first_split)):
+                        param_split=first_split[j].split(": ")
+                        value_dict[key][param_split[0]]=float(param_split[1])
+                    results[self.grouping_keys[z]].append(value_dict)
+        np.save(saveloc, results)
+        return results
+    def sort_results(self, results_dict):
+        keyr=list(results_dict.keys())
+        best_params={key:{} for key in self.grouping_keys}
+        all_scores={key:[] for key in self.grouping_keys}
+        for key in keyr:
+            bestscore=1e23
+
+            for i in range(0, len(results_dict[key])):
+                for arm in results_dict[key][i].keys():
+                    all_scores[key].append(results_dict[key][i][arm]["score"])
+                    if results_dict[key][i][arm]["score"]<bestscore:
+                        bestscore=results_dict[key][i][arm]["score"]
+                        best_params[key]["score"]=bestscore
+                        best_params[key]["params"]=[results_dict[key][i][arm][key2] for key2 in self.all_parameters]
+                        best_params[key]["arm"]=arm      
+        return best_params
+    def results_table(self, parameters, mode="table"):
+        simulation_values=self.parse_input(parameters)
+        un_normed_values={}
+        l_optim_list=0
+        for classkey in self.class_keys:
+            
+            cls=self.classes[classkey]["class"]
+            current_len=max(len(cls.optim_list), l_optim_list)
+            if current_len>l_optim_list:
+                l_optim_list=current_len
+                longest_list=cls.optim_list
+            normed_params_list=simulation_values[classkey]
+            un_normed_values[classkey]=dict(zip(cls.optim_list, cls.change_normalisation_group(normed_params_list, "un_norm")))
+            if mode=="simulation":
+                print(classkey)
+                print(un_normed_values)
+        if mode=="simulation":
+            return
+        for classkey in self.class_keys:
+            cls=self.classes[classkey]["class"]
+            for param in cls.optim_list:
+                if param not in longest_list:
+                    longest_list+=[param]
+        header_list=["Parameter"]+longest_list
+        table_data=[
+            [classkey]+[sci._utils.format_values(un_normed_values[classkey][x],3)+","
+                if x in un_normed_values[classkey] else "*"
+                for x in longest_list]
+            for classkey in self.class_keys
+        ]
+        table=tabulate.tabulate(table_data, headers=header_list, tablefmt="grid")
+        print(table)
+            
+
             
 
 
 
-#TODO
-
-#results_table
-#Initial test plots - legends!
-#Ax extraction
-#Optimisation
 
             
