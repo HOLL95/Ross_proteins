@@ -7,14 +7,14 @@ import itertools
 import Surface_confined_inference as sci
 from pathlib import Path
 import tabulate
-
+import re
 class ExperimentEvaluation:
     """
     A class for evaluating and analyzing electrochemical experiments with support for
     multiple file types, experiment configurations, and visualization methods.
     """
     
-    def __init__(self, data_locations, input_params, boundaries, common=None):
+    def __init__(self, data_locations, input_params, boundaries, common=None, **kwargs):
         """
         Initialize the ExperimentEvaluation class.
         
@@ -31,7 +31,9 @@ class ExperimentEvaluation:
             Extra parameters to apply to all experiments (e.g., temperature, area).
             Default is None.
         """
-        
+        if "SWV_e0_shift" not in kwargs:
+            kwargs["SWV_e0_shift"]=False
+        self.options=kwargs
         self.input_parameters = input_params
         self.classes = {}
         self.all_keys = []
@@ -67,6 +69,11 @@ class ExperimentEvaluation:
             self.all_parameters=self.all_parameters.union(self.classes[key]["class"].optim_list)
             if self.classes[key]["class"].experiment_type in ["FTACV","PSV"]:
                 self.all_harmonics=self.all_harmonics.union(set(self.classes[key]["class"].Fourier_harmonics))
+            else:
+                if self.options["SWV_e0_shift"]==True:
+                    if "SquareWave" in self.classes[key]["class"].experiment_type:
+                        if "anodic" not in key and "cathodic" not in key:
+                            raise ValueError("If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {0}".format(key))
         self.all_harmonics=list(self.all_harmonics)
 
         self.all_parameters=list(self.all_parameters)
@@ -397,14 +404,27 @@ class ExperimentEvaluation:
         common_params=[x for x in self.all_parameters if x not in grouped_param_dictionary]
         
         self.all_parameters=new_all_parameters+common_params
-    def apply_offset(self, parameters, match_identifiers):
-        if len(parameters)!=len(match_identifiers):
-            raise ValueError("parameters and match identifiers need to be the same length")
-        for param, match in zip(parameters, match_identifiers):
-            if param not in self.all_parameters:
-                raise ValueError("Parameter {0} not in all_parameters".format(param))
+        if self.options["SWV_e0_shift"]==True:
+            if "E0_mean" not in grouped_param_dictionary and "E0" not in grouped_param_dictionary:
+                if "E0_mean" in self.all_parameters:
+                    self.all_parameters+=["E0_mean_offset"]
+                elif "E0" in self.all_parameters:
+                    self.all_parameters+=["E0_offset"]
             else:
-                self.all_parameters+=[param+"_offset_"+match]
+                if "E0_mean" in grouped_param_dictionary:
+                    target="E0_mean"
+                elif "E0" in grouped_param_dictionary:
+                    target="E0"
+                for groupkey in self.grouping_keys:
+                    exp=[self.classes[x]["class"].experiment_type=="SquareWave" for x in self.experiment_grouping[groupkey]]
+                    if all(exp)==True:
+                        optim_list=self.parameter_map[group_key]
+                        param=[x for x in optim_list if re.search(target+r"_\d", x)][0]+"_offset"
+                        if param not in self.all_parameters:
+                            self.all_parameters+=[param]
+                    elif any(exp)==True:
+                        raise ValueError("If SWV_e0_shift is set to True, all members of a SWV group have to be SquareWave experiments")
+                    
     def parse_input(self, parameters):
         in_optimisation=False
         try:
@@ -435,17 +455,23 @@ class ExperimentEvaluation:
                                 
                         
                 for param in self.all_parameters:
-                    if "offset" in param:
-                        idx=param.find("_offset")
-                        true_param=param[:idx]
-                        if true_param not in cls.optim_list:
-                            for param2 in cls.optim_list:
-                                changed_param=param2+"_"
-                                if changed_param in param:
-                                    true_param=param2
-                        identifier=param.split("_")[-1]
-                        if identifier in classkey:
-                            sim_values[true_param]+=valuedict[param]
+                    if self.classes[classkey]["class"].experiment_type!="SquareWave":
+                        continue
+                    elif self.options["SWV_e0_shift"]==True:
+                        if "offset" in param:
+                            idx=param.find("_offset")
+                            true_param=param[:idx]
+                            if true_param not in cls.optim_list:
+                                for param2 in cls.optim_list:
+                                    changed_param=param2+"_"
+                                    if changed_param in param:
+                                        true_param=param2
+                            if "anodic" in classkey:
+                                sim_values[true_param]+=valuedict[param]
+                            elif "cathodic" in classkey:
+                                sim_values[true_param]-=valuedict[param]
+                            else:
+                                raise ValueError("If SWV_e0_shift is set to True, then all SWV experiments must be identified as anodic or cathodic, not {0}".format(key))
                 optimisation_parameters[classkey]=[sim_values[x] for x in cls.optim_list]
         for key in self.class_keys:
             if key not in optimisation_parameters:

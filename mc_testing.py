@@ -72,7 +72,7 @@ common= {
         "area":0.036,
         "N_elec":1,
         "Surface_coverage":1e-10}
-evaluator=ExperimentEvaluation( loc, experiments_dict, bounds, common)
+evaluator=ExperimentEvaluation( loc, experiments_dict, bounds, common, SWV_e0_shift=True)
 print(evaluator.all_parameters)
 grouping_list=[
            {"experiment":"FTACV",  "type":"ts", "numeric":{"Hz":{"lesser":15}, "mV":{"equals":280}}, "scaling":{"divide":["omega", "delta_E"]}},
@@ -86,12 +86,13 @@ grouping_list=[
 
 evaluator.initialise_grouping(grouping_list)
 
-grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_mean", "E0_std","gamma"]}
+grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
 evaluator.initialise_simulation_parameters(grouped_params)
-evaluator.apply_offset(["E0_mean_2"],["anodic"])
-#evaluator.check_grouping()
+#
 thresholds=evaluator.get_zero_point_scores()
-
+print(evaluator.all_parameters)
+print(evaluator.parse_input([0.5 for x in evaluator.all_parameters]))
+#evaluator.check_grouping()
 #evaluator.results([0.5 for x in evaluator.all_parameters], target_key=evaluator.grouping_keys[0])
 ax_client = AxClient()
 param_arg=[
