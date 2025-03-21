@@ -18,6 +18,8 @@ import sys
 from draft_master_class import ExperimentEvaluation
 
 loc="/home/henryll/Documents/Experimental_data/Nat/joint"
+loc="/users/hll537/Experimental_data/M4D2_joint"
+
 sw_freqs=[65, 75, 85, 100, 115, 125, 135, 145, 150, 175, 200, 300,  400, 500]
 experiments_dict={}
 dictionary_list=[
@@ -62,11 +64,12 @@ bounds={
         "Ru":[200, 400],
         "gamma":[1e-11, 1e-9],
         "Cdl":[0,1e-3],
-        "CdlE1":[-1e-5, 1e-5],
-        "CdlE2":[-5e-6, 5e-6],
+        "CdlE1":[-5e-5, 5e-5],
+        "CdlE2":[-1e-5, 1e-5],
         "CdlE3":[-1e-6, 1e-6],
         "alpha":[0.4, 0.6]
         }
+
 common= {
         "Temp":278,
         "area":0.036,
@@ -89,25 +92,11 @@ evaluator.initialise_grouping(grouping_list)
 grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
 evaluator.initialise_simulation_parameters(grouped_params)
 
-#evaluator.check_grouping(show_legend=True)
-save=False
-#save=True
-if save==True:
-    results=evaluator.ax_results_extraction(
-        dataloc="/home/henryll/Documents/Frontier_results/M4D2_inference_5",
-        num_sets=11,
-        saveloc="init_pareto_results/mc_points_pareto.npy",
-    )
-else:
-    results=np.load("init_pareto_results/mc_points_pareto.npy", allow_pickle=True).item()
-
-best_param=evaluator.sort_results(results)
-
-for m in range(0, 11):
-    all_front_points=evaluator.process_pareto_directories("/home/henryll/Documents/Frontier_results/M4D2_inference_5/set_{0}".format(m))
+for m in range(0, 20):
+    all_front_points=evaluator.process_pareto_directories(os.path.join(sys.argv[1], "set_{0}".format(m)))
     if m==0:
         saved_dict={}
-        scores={key:1e23 for key in evaluator.grouping_keys()}   
+        scores={key:1e23 for key in evaluator.grouping_keys}   
     bad_calc=False
     for key in evaluator.grouping_keys:
             for combo_key in all_front_points.keys():                
@@ -131,7 +120,7 @@ for m in range(0, 11):
                                 scores[key]=recored_score
 
 
-            
+np.save(os.path.join(sys.argv[1], "saved_sims"), saved_dict)            
     
     
                 
