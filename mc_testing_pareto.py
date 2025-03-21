@@ -113,9 +113,10 @@ for m in range(0, 11):
             for combo_key in all_front_points.keys():                
                 for elem in all_front_points[combo_key]:
                     if bad_calc==False:
-                        plist=[elem["parameters"][x] for x in evaluator.all_parameters]
+                        
                         
                         recorded_score=elem["scores"][key]
+                        plist=[elem["parameters"][x] for x in evaluator.all_parameters]
                         if recorded_score<scores[key]:
                             saved_sims=evaluator.evaluate(plist)
                             score_dict=evaluator.simple_score(saved_sims)
@@ -123,12 +124,16 @@ for m in range(0, 11):
                                 bad_calc=True
                                 break
                             else:
-                                for key in saved_sims.keys():
-                                    if "ftacv" in key:
-                                        saved_sims[key]=scipy.decimate(saved_sims[key], 13)
-                                saved_dict[groupkey]=saved_sims
-                                saved_dict["parameters"]=elem["parameters"]
+                                saved_dict[groupkey]=[]
                                 scores[key]=recored_score
+                                for elem2 in all_front_points[combo_key]:
+                                    plist=[elem2["parameters"][x] for x in evaluator.all_parameters]
+                                    saved_sims=evaluator.evaluate(plist)
+                                    for key in saved_sims.keys():
+                                        if "ftacv" in key:
+                                            saved_sims[key]=scipy.decimate(saved_sims[key], 13)
+                                    saved_dict[groupkey].append({"parameters":elem2["parameters"], saved_sims})
+                           
 
 
             
