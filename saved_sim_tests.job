@@ -17,6 +17,6 @@
 set -e
 
 module load rclone
-python mc_testing.py $SLURM_ARRAY_TASK_ID
-rclone copy frontier_results gdrive:M4D2_inference_6/
+python mc_testing_pareto.py "/users/hll537/Ross_proteins/frontier_results"
+
 
