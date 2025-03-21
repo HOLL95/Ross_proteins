@@ -9,7 +9,7 @@
 #SBATCH --mail-user=hll537@york.ac.uk   # Where to send mail
 #SBATCH --output=slurm_logs/%x-%j.log
 #SBATCH --error=slurm_logs/%x-%j.err
-#SBATCH --array=0-10                   # Array ran
+#SBATCH --array=0-20                   # Array ran
 
 
 # Abort if any command fails
@@ -18,5 +18,5 @@ set -e
 
 module load rclone
 python mc_testing.py $SLURM_ARRAY_TASK_ID
-rclone copy frontier_results gdrive:M4D2_inference_2/
+rclone copy frontier_results gdrive:M4D2_inference_5/
 
