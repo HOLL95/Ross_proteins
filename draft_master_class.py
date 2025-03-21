@@ -6,8 +6,15 @@ from scipy.interpolate import CubicSpline
 import itertools
 import Surface_confined_inference as sci
 from pathlib import Path
+from kneed import KneeLocator
 import tabulate
 import re
+from string import ascii_uppercase
+import matplotlib.patheffects as pe
+
+import matplotlib as mpl
+
+
 class ExperimentEvaluation:
     """
     A class for evaluating and analyzing electrochemical experiments with support for
@@ -583,6 +590,10 @@ class ExperimentEvaluation:
             kwargs["alpha"]=1
         if "label_list" not in kwargs:
             kwargs["label_list"]=None
+        if "patheffects" not in kwargs:
+            kwargs["patheffects"]=None
+        if "lw" not in kwargs:
+            kwargs["lw"]=None
         current_len=0
         for i in range(0, len(data_list)):
             xaxis=range(current_len, current_len+len(data_list[i]))
@@ -590,7 +601,7 @@ class ExperimentEvaluation:
                 label=kwargs["label_list"][i]
             else:
                 label=None
-            axis.plot(xaxis, data_list[i], label=label, alpha=kwargs["alpha"], linestyle=kwargs["linestyle"], color=kwargs["colour"])
+            axis.plot(xaxis, data_list[i], label=label, alpha=kwargs["alpha"], linestyle=kwargs["linestyle"], color=kwargs["colour"], lw=kwargs["lw"], path_effects=kwargs["patheffects"])
             current_len+=len(data_list[i])
         axis.set_xticks([])
         return axis
@@ -599,6 +610,10 @@ class ExperimentEvaluation:
             kwargs["colour"]=[None]
         if "linestyle" not in kwargs:
             kwargs["linestyle"]=["-"]
+        if "lw" not in kwargs:
+            kwargs["lw"]=[None]
+        if "patheffects" not in kwargs:
+            kwargs["patheffects"]=[None]
         if "alpha" not in kwargs:
             kwargs["alpha"]=[1]
         if "label_list" not in kwargs:
@@ -610,9 +625,10 @@ class ExperimentEvaluation:
         num_harmonics=len(kwargs["harmonics"])
         arrayed=np.array(harmonics_list)
         maximum=np.max(arrayed, axis=None)
+        #print(arrayed.shape)
         num_plots=arrayed.shape[0]
         num_experiments=arrayed.shape[1]
-        for key in ["colour", "linestyle", "alpha"]:
+        for key in ["colour", "linestyle", "alpha", "lw","patheffects"]:
             if isinstance(kwargs[key], list) is False:
                 raise ValueError("{0} needs to be wrapped into a list".format(key))
             if len(kwargs[key])!=num_plots:
@@ -640,19 +656,31 @@ class ExperimentEvaluation:
                         label=kwargs["label_list"][m]
                     else:
                         label=None
-                    if kwargs["colour"][j]== None:
+                    if isinstance(kwargs["colour"][j], list) or isinstance(kwargs["colour"][j], np.ndarray):
+                        colour=kwargs["colour"][j]
+                    elif kwargs["colour"][j]== None:
                         colour=sci._utils.colours[m]
                     else:
                         colour=kwargs["colour"][j]
                     
-                    axis.plot(xaxis, ratio*arrayed[j][m][i,:]+offset, label=label, alpha=kwargs["alpha"][j], linestyle=kwargs["linestyle"][j], color=colour)
+                    axis.plot(xaxis, ratio*arrayed[j][m][i,:]+offset, label=label, alpha=kwargs["alpha"][j], linestyle=kwargs["linestyle"][j], color=colour, lw=kwargs["lw"][j], path_effects=kwargs["patheffects"][j])
             current_len+=len(arrayed[j][m][i,:])
         axis.set_xticks([])
-    def results(self, parameters, **kwargs):
+    def results(self, parameter_list, **kwargs):
+        linestyles=[ "dotted","dashed", "dashdot"]
+        if isinstance(parameter_list[0], list) is False:
+            parameter_list=[parameter_list]
         if "target_key" not in kwargs:
-            target_key=None
+            target_key=[None]
         else:
-            target_key=kwargs["target_key"]
+            if isinstance(kwargs["target_key"], str):   
+                target_key=[kwargs["target_key"]]
+            elif isinstance(kwargs["target_key"], list):
+                target_key=kwargs["target_key"]
+        if "simulation_labels" not in kwargs:
+            kwargs["simulation_labels"]=None
+        elif len(kwargs["simulation_labels"]) != len(parameter_list):
+            raise ValueError("simulation_labels ({0}) not same length as provided parameter_list ({1}) ".format(len(kwargs["simulation_labels"]), len(parameter_list)))
         if "savename" not in kwargs:
             kwargs["savename"]=None
         if "show_legend" not in kwargs:
@@ -664,43 +692,129 @@ class ExperimentEvaluation:
         else:
             num_cols=len(self.grouping_keys)/2
             fig,axes=plt.subplots(2, int(num_cols))
-        simulation_values=self.evaluate(parameters)
+        defaults={
+                "cmap":mpl.colormaps['plasma'],
+                "foreground":"black",
+                "lw":0.4,
+                "strokewidth":3,
+                "colour_range":[0.2, 0.75]
+                
+            }
+        if "sim_plot_options" not in kwargs:
+            kwargs["sim_plot_options"]=defaults
+        elif kwargs["sim_plot_options"]=="simple":
+            pass
+        else:
+            for key in defaults.keys():
+                if key not in kwargs["sim_plot_options"]:
+                    kwargs["sim_plot_options"]=defaults[key]
+        if kwargs["sim_plot_options"]!="simple":
+            plot_colours=kwargs["sim_plot_options"]["cmap"](
+                np.linspace(kwargs["sim_plot_options"]["colour_range"][0],
+                kwargs["sim_plot_options"]["colour_range"][1],
+                len(parameter_list))
+            )
+            path_effects=[pe.Stroke(linewidth=kwargs["sim_plot_options"]["strokewidth"], foreground=kwargs["sim_plot_options"]["foreground"]), pe.Normal()]
+        else:
+            path_effects=None
+
+                
+      
         for i in range(0, len(self.grouping_keys)):
-            groupkey=self.grouping_keys[i]
-            ax=axes[i%2, i//2]
-            
-            if groupkey==target_key:
-                for axis in ['top','bottom','left','right']:
-                    ax.spines[axis].set_linewidth(4)
-                    ax.tick_params(width=4)
-            ax.set_title(groupkey, fontsize=8)
-            all_data=[self.scale(self.classes[x]["data"], groupkey, x) for x in self.experiment_grouping[groupkey]]
-            all_times=[self.classes[x]["times"] for x in self.experiment_grouping[groupkey]]
-            all_simulations=[self.scale(simulation_values[x], groupkey, x) for x in self.experiment_grouping[groupkey]]
-            label_list=[",".join(x.split("-")[1:]) for x in self.experiment_grouping[groupkey]]
-            if "type:ft" not in groupkey:
-                self.plot_stacked_time(ax, all_data, label_list=label_list)
-                self.plot_stacked_time(ax, all_simulations, alpha=0.75, linestyle="--", colour="black")
-            else:
-                data_harmonics=[
-                    np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics))
-                    for t,i in zip(all_times, all_data, )
-                ]
-                sim_harmonics=[
-                    np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics))
-                    for t,i in zip(all_times, all_simulations, )
-                ]
-                self.plot_stacked_harmonics(ax, [data_harmonics, sim_harmonics], alpha=[1,0.75], 
-                                                                                linestyle=["-", "--"], 
-                                                                                colour=[None, "black"], 
-                                                                                label_list=label_list,
-                                                                                scale=True)
-            if kwargs["show_legend"]==True:
-                self.add_legend(ax, groupkey)
+                
+                groupkey=self.grouping_keys[i]
+                ax=axes[i%2, i//2]
+                
+                if groupkey in target_key:
+                    for axis in ['top','bottom','left','right']:
+                        ax.spines[axis].set_linewidth(4)
+                        ax.tick_params(width=4)
+                ax.set_title(groupkey, fontsize=8)
+                all_data=[self.scale(self.classes[x]["data"], groupkey, x) for x in self.experiment_grouping[groupkey]]
+                all_times=[self.classes[x]["times"] for x in self.experiment_grouping[groupkey]]
+                label_list=[",".join(x.split("-")[1:]) for x in self.experiment_grouping[groupkey]]
+                all_simulations=[]
+                
+                    
+                for p in parameter_list:
+                    simulation_vals=self.evaluate(p)
+                    all_simulations.append([self.scale(simulation_vals[x], groupkey, x) for x in self.experiment_grouping[groupkey]])
+                if "type:ft" not in groupkey:
+                    self.plot_stacked_time(ax, all_data, label_list=label_list)
+                    for q in range(0, len(all_simulations)):
+                        if kwargs["sim_plot_options"]=="simple":
+                            self.plot_stacked_time(ax, all_simulations[q], alpha=0.75, linestyle=linestyles[q%4], colour="black")
+                        else:
+                            
+                            self.plot_stacked_time(ax, all_simulations[q], alpha=0.75, linestyle=linestyles[q%4], colour=plot_colours[q], patheffects=path_effects, lw=kwargs["sim_plot_options"]["lw"])
+                else:
+                    num_experiments = len(all_data)
+                    num_simulations = len(all_simulations) + 1  # +1 for the data
+                    
+                    # Initialize harmonics_list with proper dimensions (m×n×o)
+                    # m = num_simulations, n = num_experiments, o = length of harmonics
+                    harmonics_list = []
+                    
+                    # First, calculate harmonics for the actual data
+                    data_harmonics = np.array([
+                        np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics))
+                        for t, i in zip(all_times, all_data)
+                    ])
+                    harmonics_list.append(data_harmonics)
+                    
+                    # Then calculate harmonics for each simulation
+                    for q in range(0, len(all_simulations)):
+                        sim = all_simulations[q]
+                        sim_harmonics = np.array([
+                            np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics))
+                            for t, i in zip(all_times, sim)
+                        ])
+                        harmonics_list.append(sim_harmonics)
+                    
+                    
+                    plot_harmonics = np.array(harmonics_list)
+                    
+                    # Create lists for styling parameters
+                    alphas = [1] + [0.75] * len(all_simulations)
+                    
+                    line_styles = ["-"] + [linestyles[l % len(linestyles)] for l in range(0, len(all_simulations))]
+                    if kwargs["sim_plot_options"]=="simple":
+                        colors = [None] + ["black"] * len(all_simulations)#
+                        patheffects=[None]*len(all_simulations)+1
+                    else:
+                        colors=[None]
+                        patheffects=[None]
+                        for r in range(0, len(plot_colours)):
+                            colors+=[plot_colours[r]]
+                            patheffects+=[path_effects]
+                    
+                    self.plot_stacked_harmonics(ax, plot_harmonics,
+                                                alpha=alphas, 
+                                                linestyle=line_styles, 
+                                                colour=colors, 
+                                                label_list=label_list,
+                                                scale=True,
+                                                patheffects=patheffects)
+                if kwargs["show_legend"]==True:
+                    self.add_legend(ax, groupkey)
+                if kwargs["simulation_labels"] is not None:
+                   
+                    if i%2==0 and i//2==len(self.grouping_keys)//4:
+                        twinx=ax.twinx()
+                        twinx.set_yticks([])
+                        ylim=ax.get_ylim()
+                        xlim=ax.get_xlim()
+                        for r in range(0, len(kwargs["simulation_labels"])):
+                            if kwargs["sim_plot_options"]=="simple":
+                                twinx.plot(xlim[0],ylim[0], color="black", linestyle=linestyles[r%4])
+                            else:
+                                twinx.plot(xlim[0],ylim[0], color=plot_colours[r], linestyle=linestyles[r%4], path_effects=path_effects, label=kwargs["simulation_labels"][r])
+                        twinx.legend(ncols=len(kwargs["simulation_labels"]), bbox_to_anchor=[0.5, -0.1], loc="center")
                                                                             
-        fig.set_size_inches(16, 12)
+        fig.set_size_inches(16, 10)
 
         plt.tight_layout()
+        plt.subplots_adjust(hspace=0.3)
         if kwargs["savename"] is not None:
             fig.savefig(kwargs["savename"], dpi=500)
             plt.close()
@@ -738,6 +852,8 @@ class ExperimentEvaluation:
             for i in range(0, len(results_dict[key])):
                 for arm in results_dict[key][i].keys():
                     all_scores[key].append(results_dict[key][i][arm]["score"])
+                    if results_dict[key][i][arm]["score"]<0:
+                        continue
                     if results_dict[key][i][arm]["score"]<bestscore:
                         bestscore=results_dict[key][i][arm]["score"]
                         best_params[key]["score"]=bestscore
@@ -775,10 +891,247 @@ class ExperimentEvaluation:
             for classkey in self.class_keys
         ]
         table=tabulate.tabulate(table_data, headers=header_list, tablefmt="grid")
-        print(table)
+        return table    
+    def open_pareto(self, file, **kwargs):
+        if "key" not in kwargs:
+            kwargs["key"]="frontier"
+        if "skip_negatives" not in kwargs:
+            kwargs["skip_negatives"]=True
+        try:
+            frontier=np.load(file, allow_pickle=True).item()[kwargs["key"]]
+        except KeyError as err:
+            raise KeyError("Frontier file dictionary doesn't contain key ({0})".format(err))
+        except Exception as err:
+            print("Some other error with regards to loading the pareto file {0}".format(err))
+            raise 
+        points=[]
+        # For each point on the Pareto frontier
+        for q in range(len(frontier.param_dicts)):
+            point = {
+                "parameters": frontier.param_dicts[q],
+                "scores": {}
+            }
+            
+            # Add all metric scores for this point
+            for metric in frontier.means.keys():
+                if kwargs["skip_negatives"]==True:
+                    if frontier.means[metric][q]<0:
+                        return file, None, None
+                point["scores"][metric] = frontier.means[metric][q]
+                
+            points.append(point)
+        return points, frontier.primary_metric, frontier.secondary_metric
+    def extract_scores(self, points, keyx, keyy):
+        paretox=[x["scores"][keyx] for x in points]
+        paretoy=[y["scores"][keyy] for y in points]
+        return np.array(paretox), np.array(paretoy)
+    def get_pareto_points(self, points, keyx,keyy, s=1, **kwargs):
+        if "get_knee_region" not in kwargs:
+            kwargs["get_knee_region"]=False
+        x, y=self.extract_scores(points, keyx, keyy)
+        knee=KneeLocator(x, y, curve="convex", direction="decreasing", online=False, S=s)
+
+        values={"knee":{"x":knee.knee, "y":knee.knee_y, "keyx":keyx, "keyy":keyy}}
+        values["minx"]={"x":min(x), "y":y[np.where(x==min(x))][0]}
+        values["miny"]={"x":x[np.where(y==min(y))][0], "y":min(y)}
+        for key in values:
+            xidx=np.where(x==values[key]["x"])
+            yidx=np.where(y==values[key]["y"])  
+            if len(xidx)>1 or len(yidx)>1:
+                common_idx=set(xidx[0]).intersection(set(y_idx[0]))[0]
+            else:
+
+                common_idx=xidx[0][0]
+            values[key]["index"]=common_idx
+            
+            values[key]["parameters"]=points[common_idx]["parameters"]
+            values[key]["other_scores"]=points[common_idx]["scores"]
+        
+        if kwargs["get_knee_region"] is not False:
+            idx=values["knee"]["index"]
+            if isinstance(kwargs["get_knee_region"], list) is False:
+                if isinstance(kwargs["get_knee_region"], int) is True:
+                    kwargs["get_knee_region"]=[kwargs["get_knee_region"]]
+                else:
+                    raise ValueError("get_knee_region either needs to be int or list of ints, not {0}".format(type(kwargs["get_knee_region"])))
+            for i in range(0, len(kwargs["get_knee_region"])):
+                value=kwargs["get_knee_region"][i]
+                for sign in [-1, 1]:
+                    if sign==-1:
+                        key="knee_minus_{0}".format(value)
+                    else:
+                        key="knee_plus_{0}".format(value)
+                    curr_idx=idx+sign*value
+                    if curr_idx<0:
+                        curr_idx=0
+                    elif curr_idx>len(x)-1:
+                        curr_idx=len(x)-1
+                    values[key]={
+                        "x":x[curr_idx],
+                        "y":y[curr_idx],
+                        "index":curr_idx,
+                        "parameters":points[curr_idx]["parameters"],
+                        "other_scores":points[curr_idx]["scores"]
+                    }
+        return values
+
+    def plot_front(self, opened_file, keyx, keyy, **kwargs):
+        if "ax" not in kwargs:
+            kwargs["ax"]=None
+        if "colour" not in kwargs:
+            kwargs["colour"]=None
+        if "plot_knee" not in kwargs:
+            kwargs["plot_knee"]=False
+        if "plot_negatives" not in kwargs:
+            kwargs["plot_negatives"]=False
+        if kwargs["ax"] is None:
+            fig,ax=plt.subplots()
+        else:
+            ax=kwargs["ax"]
+        points=opened_file
+        
+        xaxis, yaxis=self.extract_scores(points,keyx, keyy)
+        if kwargs["plot_negatives"]==False:
+                found_neg=False
+                for axis_plot in [xaxis, yaxis]:
+                    if any([x<0 for x in axis_plot]):
+                        found_neg=True
+                        return
+        ax.scatter(xaxis, yaxis, c=kwargs["colour"])
+        found_neg=False
+        if kwargs["plot_knee"] is True:
+            ppoints=self.get_pareto_points(points, keyx, keyy)
+            ax.scatter(ppoints["knee"]["x"], ppoints["knee"]["y"], s=50, edgecolors="black")
+    def plot_all_fronts(self, file_list, **kwargs):
+        if "keylabel" not in kwargs:
+            kwargs["keylabel"]=True
+        if kwargs["keylabel"]==True:
+            letterdict=dict(zip(self.grouping_keys, ascii_uppercase[:len(self.grouping_keys)]))
+            legend_dict={key:"{0} : {1}".format(letterdict[key], key) for key in self.grouping_keys}
+        num_metrics=len(self.grouping_keys)
+        if "plot_knee" not in kwargs:
+            kwargs["plot_knee"]=False
+        if "axes" not in kwargs: 
+            kwargs["axes"]=None
+        if kwargs["axes"] is None:
+            fig, ax=plt.subplots(num_metrics, num_metrics)
+        else:
+            if len(kwargs["axes"])!=num_metrics:
+                raise ValueError("Subplots need to have {0} columns not {1}".format(num_metrics, len(kwargs["ax"])))   
+            ax=kwargs["axes"]    
+        if "colours" not in kwargs:
+            kwargs["colours"]=sci._utils.colours
+        if "plot_negatives" not in kwargs:
+            kwargs["plot_negatives"]=False
+        
+         
+        if isinstance(file_list, str):
+            files=[os.path.join(file_list, x) for x in os.listdir(file_list)]
+        else:
+            files=file_list
+        for q in range(0, len(files)):
+            file=files[q]
+            opened_file, key1, key2=self.open_pareto(file, skip_negatives=False)
+            for i in range(0, num_metrics):
+                for j in range(0, num_metrics):
+                    if i>j:
+                        if self.grouping_keys[i] in [key1, key2] and self.grouping_keys[j] in [key1, key2]:
+                            self.plot_front(opened_file, self.grouping_keys[j], self.grouping_keys[i], 
+                                                        colour=kwargs["colours"][q%len(kwargs["colours"])], 
+                                                        plot_knee=kwargs["plot_knee"], 
+                                                        plot_negatives=kwargs["plot_negatives"],
+                                                        ax=ax[i,j])
+        for i in range(0, num_metrics):
+            for j in range(0, num_metrics):
+                if i<=j:
+                    ax[i,j].set_axis_off()
+                else:
+                    if i==num_metrics-1:
+                        if kwargs["keylabel"]==True:
+                            xlabel=letterdict[self.grouping_keys[j]]
+                        else:
+                            xlabel=self.grouping_keys[j]
+                        ax[i,j].set_xlabel(xlabel)
+                    if j==0:
+                        if kwargs["keylabel"]==True:
+                            ylabel=letterdict[self.grouping_keys[i]]
+                        else:
+                            ylabel=self.grouping_keys[i]
+                        ax[i,j].set_ylabel(ylabel)
+        if kwargs["keylabel"]==True:
+            for i in range(0, num_metrics):
+
+                ax[0,-1].plot(0, 0, label=legend_dict[self.grouping_keys[i]])
+            ax[0,-1].legend(loc="center", handlelength=0)
+    def process_pareto_directories(self, loc, filekey="frontier"):
+        split_keys=list(itertools.combinations(self.grouping_keys, 2))
+        combo_keys=["{0}&{1}".format(x[0], x[1]) for x in split_keys]
+        split_key_addresses=dict(zip(combo_keys, split_keys))
+        all_points = {key:[] for key in combo_keys}
+        skipped_files=[]
+        read_files=[]
+        def search_directories(current_path):
+            items = os.listdir(current_path)
+            directories = []
+            files = []
+            
+            # Separate files and directories
+            for item in items:
+                item_path = os.path.join(current_path, item)
+                if os.path.isdir(item_path):
+                    directories.append(item_path)
+                else:
+                    files.append(item_path)
+            
+            # If we have directories, keep searching deeper
+            if directories:
+                for directory in directories:
+                    search_directories(directory)
+            # If we only have files, process them
+            elif files:
+                for file in files:
+                    try:
+                        points, keyx, keyy= self.open_pareto(file, skip_negatives=True, key=filekey)
+
+
+                        if isinstance(points, str) is False:
+                            read_files.append(file)
+                            for key in combo_keys:
+                                if keyx in split_key_addresses[key] and keyy in split_key_addresses[key]:
+                                    all_points[key]+=points
+                        else:
+                            skipped_files.append(points)
+                    except Exception as e:
+                        # Handle cases where get_knees can't operate on the file
+                        print(f"Couldn't process file {file}: {e}")
+                        raise
+        
+        # Start the recursive search
+        search_directories(loc)
+        total_len=0
+        if skipped_files:
+            print("Skipped {0} files (of {1}) due to negative fronts when searching for knees".format(len(skipped_files), len(read_files)+len(skipped_files)))
+        return all_points
+                    
+
+
+                                
+                                    
+                                    
+
+
+        
+                    
+
+
+
+
+
+      
             
 
-            
+                
+
 
 
 

@@ -555,9 +555,10 @@ for key in keyr:
                 best_params[key]["score"]=bestscore
                 best_params[key]["params"]=[results[key][i][arm][key2] for key2 in param_dict["optimisation"]]
                 best_params[key]["arm"]=arm
-    
+    print(key) 
+    print(dict(zip(param_dict["optimisation"] , best_params[key]["params"])))
     #simclass.results(best_params[key]["params"], group_dict, list(range(3, 8)), "normal", key, save=True)
-    print(simclass.recover_parameters(best_params[key]["params"], experiment_keys[key], "un_norm"))
+    #print(simclass.recover_parameters(best_params[key]["params"], experiment_keys[key], "un_norm"))
     #simclass.results(best_params[key]["params"], list(range(2, 10)))
 figure, axis=plt.subplots(2,3)
 listkey=list(results.keys())
