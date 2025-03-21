@@ -18,6 +18,8 @@ import sys
 from draft_master_class import ExperimentEvaluation
 run=int(sys.argv[1])
 loc="/home/henryll/Documents/Experimental_data/Nat/joint"
+loc="/users/hll537/Experimental_data/M4D2_joint"
+
 sw_freqs=[65, 75, 85, 100, 115, 125, 135, 145, 150, 175, 200, 300,  400, 500]
 experiments_dict={}
 dictionary_list=[
@@ -59,7 +61,7 @@ bounds={
         "E0_std":[1e-3, 0.1],
         "k0":[0.1, 5e3],
         "alpha":[0.4, 0.6],
-        "Ru":[0.1, 5e3],
+        "Ru":[200, 400],
         "gamma":[1e-11, 1e-9],
         "Cdl":[0,1e-3],
         "CdlE1":[-5e-5, 5e-5],
