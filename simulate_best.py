@@ -92,43 +92,21 @@ evaluator.initialise_grouping(grouping_list)
 grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
 evaluator.initialise_simulation_parameters(grouped_params)
 
-for m in range(0, 20):
-    all_front_points=evaluator.process_pareto_directories(os.path.join(sys.argv[1], "set_{0}".format(m)))
-    #should continue on negatives
-    if m==0:
-        saved_dict={key:[] for key in all_front_points.keys()}
-        scores={key:1e23 for key in evaluator.grouping_keys}   
-    bad_calc=False
-    for key in evaluator.grouping_keys:
-            for combo_key in all_front_points.keys():                
-                for elem in all_front_points[combo_key]:
-                    point_len=len(all_front_points[combo_key])
-                    if bad_calc==False:
-                        
-                        
-                        recorded_score=elem["scores"][key]
-                        plist=[elem["parameters"][x] for x in evaluator.all_parameters]
-                        if recorded_score<scores[key]:
-                            saved_sims=evaluator.evaluate(plist)
-                            score_dict=evaluator.simple_score(saved_sims)
-                            #score_dict={ckey:np.random.rand()+0.3 for ckey in evaluator.grouping_keys}
-                            if score_dict[key]>(1.2*recorded_score):
-                                bad_calc=True
-                                break
-                            else:
-                                saved_dict[combo_key]=[{"parameters":elem["parameters"]} for elem in all_front_points[combo_key]]
-                                
-                                scores[key]=recorded_score
-                                break
 
-import pickle
+p_dict=np.load(os.path.join(sys.argv[3], "saved_parameters.npy"), saved_dict, allow_pickle=True).item()
+num_points=int(sys.argv[2])
+current_key=int(float(sys.argv[1])//num_points)
+front_list=p_dict[evaluator.grouping_keys[current_key]]
+i=int(float(sys.argv[1])%num_points)
 
-results = {"size": len(evaluator.grouping_keys)*point_len}
-
-# Write results to a file
-with open('job_results.pkl', 'wb') as f:
-    pickle.dump(results, f)
-np.save("saved_parameters.npy", saved_dict)
+plist=[front_list[i]["parameters"][x] for x in evaluator.all_parameters]
+saved_sims=evaluator.evaluate(plist)
+for key in saved_sims.keys():
+    if "ftacv" in key:
+        saved_sims[key]=scipy.decimate(saved_sims[key], 13)
+front_list[i]["saved_simulations"]=saved_sims
+front_list[i]["key"]=evaluator.grouping_keys[current_key]
+np.save("frontier_results/indvidual_simulations/saved_simulations_{1}_{0}".format(i, current_key), front_list[i])
 
     
     

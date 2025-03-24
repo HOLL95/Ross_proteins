@@ -109,26 +109,25 @@ for m in range(0, 20):
                         recorded_score=elem["scores"][key]
                         plist=[elem["parameters"][x] for x in evaluator.all_parameters]
                         if recorded_score<scores[key]:
-                            saved_sims=evaluator.evaluate(plist)
-                            score_dict=evaluator.simple_score(saved_sims)
-                            #score_dict={ckey:np.random.rand()+0.3 for ckey in evaluator.grouping_keys}
+                            #saved_sims=evaluator.evaluate(plist)
+                            #score_dict=evaluator.simple_score(saved_sims)
+                            score_dict={ckey:np.random.rand()+0.3 for ckey in evaluator.grouping_keys}
                             if score_dict[key]>(1.2*recorded_score):
                                 bad_calc=True
                                 break
                             else:
                                 saved_dict[combo_key]=[{"parameters":elem["parameters"]} for elem in all_front_points[combo_key]]
-                                
                                 scores[key]=recorded_score
                                 break
 
 import pickle
 
-results = {"size": len(evaluator.grouping_keys)*point_len}
+results = {"size": point_len, "keys":len(evaluator.grouping_keys)}
 
 # Write results to a file
 with open('job_results.pkl', 'wb') as f:
     pickle.dump(results, f)
-np.save("saved_parameters.npy", saved_dict)
+np.save(os.path.join(sys.argv[1], "saved_parameters.npy"), saved_dict)
 
     
     
