@@ -110,9 +110,11 @@ for m in range(0, 20):
                             saved_sims=evaluator.evaluate(plist)
                             score_dict=evaluator.simple_score(saved_sims)
                             if score_dict[key]>(1.2*recorded_score):
+                                print("bad")
                                 bad_calc=True
                                 break
                             else:
+                                print("good")
                                 saved_dict[groupkey]=[]
                                 scores[key]=recored_score
                                 for elem2 in all_front_points[combo_key]:
@@ -121,8 +123,8 @@ for m in range(0, 20):
                                     for key in saved_sims.keys():
                                         if "ftacv" in key:
                                             saved_sims[key]=scipy.decimate(saved_sims[key], 13)
-                                    saved_dict[groupkey].append({"parameters":elem2["parameters"], saved_sims})
-                           
+                                    saved_dict[groupkey].append({"parameters":elem2["parameters"], "simulations":saved_sims})
+                                break                           
 
 
 np.save(os.path.join(sys.argv[1], "saved_sims"), saved_dict)            
