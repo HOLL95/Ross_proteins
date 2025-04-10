@@ -9,7 +9,7 @@ import math
 import matplotlib.pyplot as plt
 import copy
 from scipy.interpolate import CubicSpline
-
+from scipy.signal import decimate
 import os
 from ax.utils.notebook.plotting import init_notebook_plotting, render
 from pathlib import Path
@@ -18,6 +18,8 @@ import sys
 from draft_master_class import ExperimentEvaluation
 
 loc="/home/henryll/Documents/Experimental_data/Nat/joint"
+#loc="/users/hll537/Experimental_data/M4D2_joint"
+
 sw_freqs=[65, 75, 85, 100, 115, 125, 135, 145, 150, 175, 200, 300,  400, 500]
 experiments_dict={}
 dictionary_list=[
@@ -56,10 +58,10 @@ for i in range(0, len(sw_freqs)):
 bounds={
         "E0":[-0.6, -0.1],
         "E0_mean":[-0.6, -0.1],
-        "E0_std":[1e-3, 0.1],
-        "k0":[0.1, 5e3],
+        "E0_std":[1e-3, 0.085],
+        "k0":[10, 500],
         "alpha":[0.4, 0.6],
-        "Ru":[0.1, 5e3],
+        "Ru":[200, 400],
         "gamma":[1e-11, 1e-9],
         "Cdl":[0,1e-3],
         "CdlE1":[-5e-5, 5e-5],
@@ -67,12 +69,14 @@ bounds={
         "CdlE3":[-1e-6, 1e-6],
         "alpha":[0.4, 0.6]
         }
+
+
 common= {
         "Temp":278,
         "area":0.036,
         "N_elec":1,
         "Surface_coverage":1e-10}
-evaluator=ExperimentEvaluation( loc, experiments_dict, bounds, common)
+evaluator=ExperimentEvaluation( loc, experiments_dict, bounds, common, SWV_e0_shift=True)
 print(evaluator.all_parameters)
 grouping_list=[
            {"experiment":"FTACV",  "type":"ts", "numeric":{"Hz":{"lesser":15}, "mV":{"equals":280}}, "scaling":{"divide":["omega", "delta_E"]}},
@@ -86,23 +90,26 @@ grouping_list=[
 
 evaluator.initialise_grouping(grouping_list)
 
-grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_mean", "E0_std","gamma"]}
+grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
 evaluator.initialise_simulation_parameters(grouped_params)
-evaluator.apply_offset(["E0_mean_2"],["anodic"])
-#evaluator.check_grouping(show_legend=True)
-save=False
-if save==True:
-    results=evaluator.ax_results_extraction(
-        dataloc="/home/henryll/Documents/Frontier_results/M4D2_inference_2",
-        num_sets=11,
-        saveloc="init_pareto_results/mc_points.npy",
-    )
-else:
-    results=np.load("init_pareto_results/mc_points.npy", allow_pickle=True).item()
+saved_sims=np.load("/home/henryll/Documents/Frontier_results/M4D2_inference_7/simulation_values.npy", allow_pickle=True).item()
 
-best_param=evaluator.sort_results(results)
-for key in list(best_param.keys()):
-    evaluator.results_table(best_param[key]["params"])
-    evaluator.results(best_param[key]["params"], target_key=key, savename=None, show_legend=True)
-   
+keys=list(saved_sims.keys())
+for key in keys[0:]:
+    
+    for iteration_key in saved_sims[key]:
+        score_key=saved_sims[key][iteration_key][0]["key"]
+        target_keys=score_key.split("&")
+        front=saved_sims[key][iteration_key]
+        del saved_sims
+        #evaluator.results([saved_sims[key][0]["saved_simulations"]], target_key=target_keys, savename=None, pre_saved=True, sim_plot_options="simple")
+        evaluator.interactive_front_results(front, target_key=target_keys, sim_address="saved_simulations", score_address="scores")
+        saved_sims=np.load("/home/henryll/Documents/Frontier_results/M4D2_inference_7/simulation_values.npy", allow_pickle=True).item()
+
+        
+
+    
+    
+                
+    
    

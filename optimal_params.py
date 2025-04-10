@@ -9,15 +9,17 @@ import math
 import matplotlib.pyplot as plt
 import copy
 from scipy.interpolate import CubicSpline
-
+from scipy.signal import decimate
 import os
 from ax.utils.notebook.plotting import init_notebook_plotting, render
 from pathlib import Path
 from submitit import AutoExecutor
 import sys
 from draft_master_class import ExperimentEvaluation
-
+import tabulate
 loc="/home/henryll/Documents/Experimental_data/Nat/joint"
+#loc="/users/hll537/Experimental_data/M4D2_joint"
+
 sw_freqs=[65, 75, 85, 100, 115, 125, 135, 145, 150, 175, 200, 300,  400, 500]
 experiments_dict={}
 dictionary_list=[
@@ -56,10 +58,10 @@ for i in range(0, len(sw_freqs)):
 bounds={
         "E0":[-0.6, -0.1],
         "E0_mean":[-0.6, -0.1],
-        "E0_std":[1e-3, 0.1],
-        "k0":[0.1, 5e3],
+        "E0_std":[1e-3, 0.085],
+        "k0":[10, 500],
         "alpha":[0.4, 0.6],
-        "Ru":[0.1, 5e3],
+        "Ru":[200, 400],
         "gamma":[1e-11, 1e-9],
         "Cdl":[0,1e-3],
         "CdlE1":[-5e-5, 5e-5],
@@ -67,12 +69,14 @@ bounds={
         "CdlE3":[-1e-6, 1e-6],
         "alpha":[0.4, 0.6]
         }
+
+
 common= {
         "Temp":278,
         "area":0.036,
         "N_elec":1,
         "Surface_coverage":1e-10}
-evaluator=ExperimentEvaluation( loc, experiments_dict, bounds, common)
+evaluator=ExperimentEvaluation( loc, experiments_dict, bounds, common, SWV_e0_shift=True)
 print(evaluator.all_parameters)
 grouping_list=[
            {"experiment":"FTACV",  "type":"ts", "numeric":{"Hz":{"lesser":15}, "mV":{"equals":280}}, "scaling":{"divide":["omega", "delta_E"]}},
@@ -86,23 +90,49 @@ grouping_list=[
 
 evaluator.initialise_grouping(grouping_list)
 
-grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_mean", "E0_std","gamma"]}
+grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
 evaluator.initialise_simulation_parameters(grouped_params)
-evaluator.apply_offset(["E0_mean_2"],["anodic"])
-#evaluator.check_grouping(show_legend=True)
-save=False
-if save==True:
-    results=evaluator.ax_results_extraction(
-        dataloc="/home/henryll/Documents/Frontier_results/M4D2_inference_2",
-        num_sets=11,
-        saveloc="init_pareto_results/mc_points.npy",
-    )
-else:
-    results=np.load("init_pareto_results/mc_points.npy", allow_pickle=True).item()
+best_scores={key:{"score":1e23, "mean":0,  "counter":0} for key in evaluator.grouping_keys}
+for m in range(0, 20):
+    ax_client=np.load("/home/henryll/Documents/Frontier_results/M4D2_inference_7/set_{0}/ax_client.npy".format(m), allow_pickle=True).item()["saved_frontier"]
+    params=ax_client.get_pareto_optimal_parameters(use_model_predictions=True)
+    #second_param_set=ax_client.get_pareto_optimal_parameters(use_model_predictions=False)
+    
+    for recovered in [params]:
+        all_indices=sorted(list(recovered.keys()))
+        for i in range(0, len(all_indices)):
+            idx=all_indices[i]
+            param_dict=recovered[idx][0]
+            score_dict=recovered[idx][1][0]
+            param_list=[param_dict[x] for x in param_dict]
+            for groupkey in evaluator.grouping_keys:
+                if score_dict[groupkey]<best_scores[groupkey]["score"]:
+                    best_scores[groupkey]["score"]=score_dict[groupkey]
+                    best_scores[groupkey]["params"]=param_list
+                    best_scores[groupkey]["all_scores"]=score_dict
+                best_scores[groupkey]["mean"]+=best_scores[groupkey]["score"]
+                best_scores[groupkey]["counter"]+=1
+for key in evaluator.grouping_keys:
+    best_scores[key]["mean"]/=best_scores[key]["counter"]
+    
+np.save("pareto_optimal_tests/optimise_each/predict/saved_best.npy", best_scores)
+#best_scores=np.load("pareto_optimal_tests/optimise_each/saved_best.npy", allow_pickle=True).item()
+for key in evaluator.grouping_keys:
+    print(key)
+    evaluator.results(best_scores[key]["params"],  target_key=key, savename="pareto_optimal_tests/optimise_each/predict/{0}.png".format(key), show_legend=True)
+    with open("pareto_optimal_tests/optimise_each/predict/{0}.txt".format(key), "w") as f:
+        f.write(evaluator.results_table(best_scores[key]["params"]))
+        all_scores=[[x, best_scores[key]["all_scores"][x], best_scores[x]["mean"], best_scores[x]["score"]] for x in evaluator.grouping_keys]
+        f.write(tabulate.tabulate(all_scores, headers=["Name", "Score", "Score mean", "Score best"], tablefmt="grid"))
 
-best_param=evaluator.sort_results(results)
-for key in list(best_param.keys()):
-    evaluator.results_table(best_param[key]["params"])
-    evaluator.results(best_param[key]["params"], target_key=key, savename=None, show_legend=True)
-   
+
+
+
+
+        
+
+    
+    
+                
+    
    

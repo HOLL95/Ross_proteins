@@ -11,9 +11,9 @@ import tabulate
 import re
 from string import ascii_uppercase
 import matplotlib.patheffects as pe
-
+from matplotlib.gridspec import GridSpec
 import matplotlib as mpl
-
+from matplotlib.widgets import Button, Slider
 
 class ExperimentEvaluation:
     """
@@ -274,32 +274,34 @@ class ExperimentEvaluation:
         pot = np.array([voltage[int(x)] for x in cls._internal_memory["SW_params"]["b_idx"]])
         
         # Apply baseline correction
-        
-        signal_region = zero_params["potential_window"]
-        before = np.where((pot < signal_region[0]))
-        after = np.where((pot > signal_region[1]))
-        
-        noise_data = []
-        noise_spacing = zero_params["thinning"]
-        roll = zero_params["smoothing"]
-        midded_current = sci._utils.moving_avg(current, roll)
-        
-        for sequence in [pot, midded_current]:
-            catted_sequence = np.concatenate([
-                sequence[before][roll+10-1::noise_spacing],
-                sequence[after][roll+10-1::noise_spacing]
-            ])
-            noise_data.append(catted_sequence)
-        
-        sort_args = np.argsort(noise_data[0])
-        sorted_x = [noise_data[0][x] for x in sort_args]
-        sorted_y = [noise_data[1][x] for x in sort_args]
-        
-        # Apply cubic spline for baseline correction
-        CS = CubicSpline(sorted_x, sorted_y)
-        
-        # Store normalized data
-        self.classes[experiment_key]["data"] = cls.nondim_i(current - CS(pot))
+        if zero_params is not None:
+            signal_region = zero_params["potential_window"]
+            before = np.where((pot < signal_region[0]))
+            after = np.where((pot > signal_region[1]))
+            
+            noise_data = []
+            noise_spacing = zero_params["thinning"]
+            roll = zero_params["smoothing"]
+            midded_current = sci._utils.moving_avg(current, roll)
+            
+            for sequence in [pot, midded_current]:
+                catted_sequence = np.concatenate([
+                    sequence[before][roll+10-1::noise_spacing],
+                    sequence[after][roll+10-1::noise_spacing]
+                ])
+                noise_data.append(catted_sequence)
+            
+            sort_args = np.argsort(noise_data[0])
+            sorted_x = [noise_data[0][x] for x in sort_args]
+            sorted_y = [noise_data[1][x] for x in sort_args]
+            
+            # Apply cubic spline for baseline correction
+            CS = CubicSpline(sorted_x, sorted_y)
+            
+            # Store normalized data
+            self.classes[experiment_key]["data"] = cls.nondim_i(current - CS(pot))
+        else:
+             self.classes[experiment_key]["data"] = cls.nondim_i(current)
         self.classes[experiment_key]["times"] = times
         self.classes[experiment_key]["zero_sim"]=np.zeros(len(current))
         self.classes[experiment_key]["zero_point"] = sci._utils.RMSE(np.zeros(len(current)), self.classes[experiment_key]["data"])
@@ -442,7 +444,10 @@ class ExperimentEvaluation:
             valuedict=dict(zip(self.all_parameters, copy.deepcopy(parameters)))
         optimisation_parameters={}
         for group_key in self.grouping_keys:
-            parameter_list=self.parameter_map[group_key]
+            if hasattr(self, "parameter_map"):
+                parameter_list=self.parameter_map[group_key]
+            else:
+                raise ValueError("Need to run `initialise_grouping()` function first")
             sim_values={}
             for classkey in self.experiment_grouping[group_key]:
                 cls=self.classes[classkey]["class"]
@@ -523,46 +528,9 @@ class ExperimentEvaluation:
             for param in self.group_dict[groupkey]["scaling"]["multiply"]:
                 value*=cls._internal_memory["input_parameters"][param]  
         return value
-    def check_grouping(self,show_legend=False):
-        if len(self.grouping_keys)%2!=0:
-            num_cols=(len(self.grouping_keys)+1)/2
-            fig,axes=plt.subplots(2, int(num_cols))
-            axes[1, -1].set_axis_off()
-        else:
-            num_cols=len(self.grouping_keys)/2
-            fig,axes=plt.subplots(2, int(num_cols))
-        for i in range(0, len(self.grouping_keys)):
-            groupkey=self.grouping_keys[i]
-            ax=axes[i%2, i//2]
-            ax.set_title(groupkey, fontsize=8)
-            all_data=[self.scale(self.classes[x]["data"], groupkey, x) for x in self.experiment_grouping[groupkey]]
-            all_times=[self.classes[x]["times"] for x in self.experiment_grouping[groupkey]]
-            all_zeros=[self.scale(self.classes[x]["zero_sim"], groupkey, x) for x in self.experiment_grouping[groupkey]]
-            label_list=[",".join(x.split("-")[1:]) for x in self.experiment_grouping[groupkey]]
-            if "type:ft" not in groupkey:
-                self.plot_stacked_time(ax, all_data, label_list=label_list)
-                self.plot_stacked_time(ax, all_zeros, alpha=0.75, linestyle="--", colour="black")
-            else:
-                data_harmonics=[
-                    np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics))
-                    for t,i in zip(all_times, all_data, )
-                ]
-                zero_harmonics=[
-                    np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics))
-                    for t,i in zip(all_times, all_zeros, )
-                ]
-                self.plot_stacked_harmonics(ax, [data_harmonics, zero_harmonics], alpha=[1,0.75], 
-                                                                                linestyle=["-", "--"], 
-                                                                                colour=[None, "black"], 
-                                                                                label_list=label_list,
-                                                                                scale=True)
-
-            if show_legend==True:
-                self.add_legend(ax, groupkey)
-
-        fig.set_size_inches(16, 12)
-        plt.tight_layout()
-        plt.show()
+        
+    def check_grouping(self,):
+        self.plot_results([], savename=None, show_legend=True)
     def add_legend(self, ax, groupkey, target_cols=3):
         num_labels=len(self.experiment_grouping[groupkey])
         if num_labels<target_cols:
@@ -595,81 +563,239 @@ class ExperimentEvaluation:
         if "lw" not in kwargs:
             kwargs["lw"]=None
         current_len=0
+        line_list=[]
         for i in range(0, len(data_list)):
             xaxis=range(current_len, current_len+len(data_list[i]))
             if kwargs["label_list"] is not None:
                 label=kwargs["label_list"][i]
             else:
                 label=None
-            axis.plot(xaxis, data_list[i], label=label, alpha=kwargs["alpha"], linestyle=kwargs["linestyle"], color=kwargs["colour"], lw=kwargs["lw"], path_effects=kwargs["patheffects"])
+            l1, =axis.plot(xaxis, data_list[i], label=label, alpha=kwargs["alpha"], linestyle=kwargs["linestyle"], color=kwargs["colour"], lw=kwargs["lw"], path_effects=kwargs["patheffects"])
             current_len+=len(data_list[i])
+            line_list.append(l1)
         axis.set_xticks([])
-        return axis
-    def plot_stacked_harmonics(self, axis,harmonics_list, **kwargs):
-        if "colour" not in kwargs:
-            kwargs["colour"]=[None]
-        if "linestyle" not in kwargs:
-            kwargs["linestyle"]=["-"]
-        if "lw" not in kwargs:
-            kwargs["lw"]=[None]
-        if "patheffects" not in kwargs:
-            kwargs["patheffects"]=[None]
-        if "alpha" not in kwargs:
-            kwargs["alpha"]=[1]
-        if "label_list" not in kwargs:
-            kwargs["label_list"]=None
-        if "harmonics" not in kwargs:
-            kwargs["harmonics"]=self.all_harmonics
-        if "scale" not in kwargs:
-            kwargs["scale"]=True
-        num_harmonics=len(kwargs["harmonics"])
-        arrayed=np.array(harmonics_list)
-        maximum=np.max(arrayed, axis=None)
-        #print(arrayed.shape)
-        num_plots=arrayed.shape[0]
-        num_experiments=arrayed.shape[1]
-        for key in ["colour", "linestyle", "alpha", "lw","patheffects"]:
-            if isinstance(kwargs[key], list) is False:
-                raise ValueError("{0} needs to be wrapped into a list".format(key))
-            if len(kwargs[key])!=num_plots:
-                if len(kwargs[key])==1:
-                    kwargs[key]=[kwargs[key][0] for x in range(0, num_plots)]
-                else:
-                    raise ValueError("{0} needs to be the same length as the number of plots".format(key))
-        if "residual" not in kwargs:
-            kwargs["residual"]=False
-        if kwargs["residual"]==True and num_plots!=2:
-            raise ValueError("Can only do two sets of harmonics for a residual plot")
-        current_len=0
         
-        for m in range(0, num_experiments):
-            for i in range(0, num_harmonics):
-                current_maximum=np.max(np.array([arrayed[x][m][i,:] for x in range(0, num_plots)]), axis=None)
-                offset=(num_harmonics-i)*1.1*maximum
-                ratio=maximum/current_maximum
-                if kwargs["scale"]==False:
-                        ratio=1
-                for j in range(0, num_plots):
+        return axis, line_list
+    def process_harmonics(self, harmonics_list, **kwargs):
+        """
+        Process harmonics data and calculate all appropriate scalings.
+        
+        Parameters:
+        -----------
+        harmonics_list : list
+            List of harmonics data to process
+        **kwargs : dict
+            Additional keyword arguments:
+            - harmonics: list of harmonics to process (default: None)
+            - scale: whether to scale harmonics (default: True)
+            - residual: whether to compute residuals (default: False)
+            
+        Returns:
+        --------
+        dict
+            Dictionary containing processed data and parameters for plotting
+        """
+        # Set default values if not provided
+        if "harmonics" not in kwargs:
+            kwargs["harmonics"] = self.all_harmonics
+        if "scale" not in kwargs:
+            kwargs["scale"] = True
+        if "residual" not in kwargs:
+            kwargs["residual"] = False
+        if "additional_maximum" not in kwargs:
+            kwargs["additional_maximum"]=0
+            
+        # Process the harmonics list
+        arrayed = np.array(harmonics_list)
+        maximum = max(np.max(arrayed, axis=None), kwargs["additional_maximum"])
+        #print(maximum)
+        #print(np.max(arrayed, axis=None),kwargs["additional_maximum"], "*")
+        # Get dimensions
+        num_plots = arrayed.shape[0]
+        num_experiments = arrayed.shape[1]
+        num_harmonics = len(kwargs["harmonics"]) if kwargs["harmonics"] is not None else arrayed.shape[2]
+        
+        # Validate residual option
+        if kwargs["residual"] == True and num_plots != 2:
+            raise ValueError("Can only do two sets of harmonics for a residual plot")
+        
+        # Calculate scaling factors and offsets
+        scaled_data = []
+        for m in range(num_experiments):
+            exp_data = []
+            for i in range(num_harmonics):
+                harmonic_data = []
+                # Calculate maximum for current harmonic across all plots
+                current_maximum = np.max(np.array([arrayed[x][m][i,:] for x in range(num_plots)]), axis=None)
+                # Calculate offset for stacking
+                offset = (num_harmonics - i) * 1.1 * maximum
+                # Calculate scaling ratio
+                ratio = maximum / current_maximum if kwargs["scale"] else 1
+                
+                for j in range(num_plots):
+                    xdata = range(len(arrayed[j][m][i,:]))
+                    ydata = ratio * arrayed[j][m][i,:] + offset
+                    harmonic_data.append((xdata, ydata))
+                
+                exp_data.append(harmonic_data)
+            scaled_data.append(exp_data)
+        
+        # Prepare result dictionary
+        result = {
+            "scaled_data": scaled_data,
+            "dimensions": {
+                "num_plots": num_plots,
+                "num_experiments": num_experiments,
+                "num_harmonics": num_harmonics
+            },
+            "maximum": maximum
+        }
+        #scaled data is returned as experiment -> harmonic -> plot
+        return result
+
+    def plot_scaled_harmonics(self, axis, processed_data, **kwargs):
+        """
+        Plot scaled harmonics data.
+        
+        Parameters:
+        -----------
+        axis : matplotlib.axes.Axes
+            Axis to plot on
+        processed_data : dict
+            Dictionary containing processed data from process_harmonics
+        **kwargs : dict
+            Additional keyword arguments for styling:
+            - colour: list of colors for each plot
+            - linestyle: list of line styles
+            - lw: list of line widths
+            - patheffects: list of path effects
+            - alpha: list of alpha values
+            - label_list: list of labels for each experiment
+            - utils_colours: list of colors to use for different experiments
+            
+        Returns:
+        --------
+        tuple
+            (axis, line_list) - the axis and list of plotted lines
+        """
+        scaled_data = processed_data["scaled_data"]
+        dimensions = processed_data["dimensions"]
+        num_plots = dimensions["num_plots"]
+        num_experiments = dimensions["num_experiments"]
+        num_harmonics = dimensions["num_harmonics"]
+        
+        # Process styling parameters
+        # Set default values
+        if "colour" not in kwargs:
+            kwargs["colour"] = [None]
+        if "linestyle" not in kwargs:
+            kwargs["linestyle"] = ["-"]
+        if "lw" not in kwargs:
+            kwargs["lw"] = [None]
+        if "patheffects" not in kwargs:
+            kwargs["patheffects"] = [None]
+        if "alpha" not in kwargs:
+            kwargs["alpha"] = [1]
+        if "label_list" not in kwargs:
+            kwargs["label_list"] = None
+            
+        # Validate styling parameters
+        style_keys = ["colour", "linestyle", "alpha", "lw", "patheffects"]
+        for key in style_keys:
+            if isinstance(kwargs[key], list) is False:
+                raise ValueError(f"{key} needs to be wrapped into a list")
+            
+            if len(kwargs[key]) != num_plots:
+                if len(kwargs[key]) == 1:
+                    kwargs[key] = [kwargs[key][0] for _ in range(num_plots)]
+                else:
+                    raise ValueError(f"{key} needs to be the same length as the number of plots")
+        
+        # Prepare for plotting
+        current_len = 0
+        line_list = []
+        
+        # Get default colors
+        utils_colours = kwargs.get("utils_colours", None)
+        
+        # Plot each experiment
+        for m in range(num_experiments):
+            
+            
+            # Plot each harmonic
+            for i in range(num_harmonics):
+                current_line_list = []
+                # Plot each dataset
+                for j in range(num_plots):
+                    xdata, ydata = scaled_data[m][i][j]
                     
-                    xaxis=range(current_len, current_len+len(arrayed[j][m][i,:]))
-                    if i==0 and j==0 and kwargs["label_list"] is not None:
-                        label=kwargs["label_list"][m]
+                    # Adjust x-axis for continuous plotting
+                    xaxis = [x + current_len for x in xdata]
+                    
+                    # Set label for the first line of each experiment
+                    if i == 0 and j == 0 and kwargs["label_list"] is not None:
+                        label = kwargs["label_list"][m]
                     else:
-                        label=None
+                        label = None
+                    
+                    # Set color
                     if isinstance(kwargs["colour"][j], list) or isinstance(kwargs["colour"][j], np.ndarray):
-                        colour=kwargs["colour"][j]
-                    elif kwargs["colour"][j]== None:
-                        colour=sci._utils.colours[m]
+                        colour = kwargs["colour"][j]
+                    elif kwargs["colour"][j] is None:
+                        # Use utils_colours if provided, otherwise use default
+                        colour = utils_colours[m] if utils_colours is not None else f"C{m}"
                     else:
-                        colour=kwargs["colour"][j]
+                        colour = kwargs["colour"][j]
                     
-                    axis.plot(xaxis, ratio*arrayed[j][m][i,:]+offset, label=label, alpha=kwargs["alpha"][j], linestyle=kwargs["linestyle"][j], color=colour, lw=kwargs["lw"][j], path_effects=kwargs["patheffects"][j])
-            current_len+=len(arrayed[j][m][i,:])
+                    # Plot the line
+                    l1, = axis.plot(
+                        xaxis, 
+                        ydata, 
+                        label=label, 
+                        alpha=kwargs["alpha"][j], 
+                        linestyle=kwargs["linestyle"][j], 
+                        color=colour, 
+                        lw=kwargs["lw"][j], 
+                        path_effects=kwargs["patheffects"][j]
+                    )
+                    
+                    current_line_list.append(l1)
+                line_list.append(current_line_list)
+            # Update current length for the next harmonics
+            if len(scaled_data[m][i][0][0]) > 0:
+                current_len += len(scaled_data[m][i][0][0])
+            
+               
+        
+        # Remove x-axis ticks
         axis.set_xticks([])
-    def results(self, parameter_list, **kwargs):
-        linestyles=[ "dotted","dashed", "dashdot"]
-        if isinstance(parameter_list[0], list) is False:
-            parameter_list=[parameter_list]
+        
+        return axis, line_list
+    def results(self, input_list, **kwargs):
+        if "pre_saved" not in kwargs:
+            kwargs["pre_saved"]=False     
+        if kwargs["pre_saved"]==False:
+            if isinstance(input_list[0], list) is False:
+                input_list=[input_list]
+        else:
+            if isinstance(input_list, dict) is True:
+                input_list=[input_list]
+        self.plot_results(self.process_simulation_dict(input_list, pre_saved=kwargs["pre_saved"]), **kwargs)  
+    def process_simulation_dict(self, input_list, pre_saved):
+        total_all_simulations=[]
+        for p in input_list:
+            if pre_saved==False:
+                simulation_vals=self.evaluate(p)
+            else:
+                simulation_vals=p
+            groupsims={}
+            for i in range(0, len(self.grouping_keys)):
+                groupkey=self.grouping_keys[i]
+                groupsims[groupkey]=[self.scale(simulation_vals[x], groupkey, x) for x in self.experiment_grouping[groupkey]]
+        total_all_simulations.append(groupsims)
+        return total_all_simulations
+    def plot_results(self, simulation_values, **kwargs):
+        linestyles=[ "dashed", "dashdot","dotted",]
         if "target_key" not in kwargs:
             target_key=[None]
         else:
@@ -679,19 +805,23 @@ class ExperimentEvaluation:
                 target_key=kwargs["target_key"]
         if "simulation_labels" not in kwargs:
             kwargs["simulation_labels"]=None
-        elif len(kwargs["simulation_labels"]) != len(parameter_list):
-            raise ValueError("simulation_labels ({0}) not same length as provided parameter_list ({1}) ".format(len(kwargs["simulation_labels"]), len(parameter_list)))
+        elif len(kwargs["simulation_labels"]) != len(simulation_values):
+            raise ValueError("simulation_labels ({0}) not same length as provided simulation_values ({1}) ".format(len(kwargs["simulation_labels"]), len(simulation_values)))
         if "savename" not in kwargs:
             kwargs["savename"]=None
         if "show_legend" not in kwargs:
             kwargs["show_legend"]=False
-        if len(self.grouping_keys)%2!=0:
-            num_cols=(len(self.grouping_keys)+1)/2
-            fig,axes=plt.subplots(2, int(num_cols))
-            axes[1, -1].set_axis_off()
+        if "axes" not in kwargs:
+            if len(self.grouping_keys)%2!=0:
+                num_cols=(len(self.grouping_keys)+1)/2
+                fig,axes=plt.subplots(2, int(num_cols))
+                axes[1, -1].set_axis_off()
+            else:
+                num_cols=len(self.grouping_keys)/2
+                fig,axes=plt.subplots(2, int(num_cols))
         else:
-            num_cols=len(self.grouping_keys)/2
-            fig,axes=plt.subplots(2, int(num_cols))
+            axes=kwargs["axes"]
+        self.plot_line_dict={}
         defaults={
                 "cmap":mpl.colormaps['plasma'],
                 "foreground":"black",
@@ -701,8 +831,8 @@ class ExperimentEvaluation:
                 
             }
         if "sim_plot_options" not in kwargs:
-            kwargs["sim_plot_options"]=defaults
-        elif kwargs["sim_plot_options"]=="simple":
+            kwargs["sim_plot_options"]="simple"
+        elif kwargs["sim_plot_options"]=="default":
             pass
         else:
             for key in defaults.keys():
@@ -712,14 +842,17 @@ class ExperimentEvaluation:
             plot_colours=kwargs["sim_plot_options"]["cmap"](
                 np.linspace(kwargs["sim_plot_options"]["colour_range"][0],
                 kwargs["sim_plot_options"]["colour_range"][1],
-                len(parameter_list))
+                len(simulation_values))
             )
             path_effects=[pe.Stroke(linewidth=kwargs["sim_plot_options"]["strokewidth"], foreground=kwargs["sim_plot_options"]["foreground"]), pe.Normal()]
         else:
-            path_effects=None
-
-                
-      
+            path_effects=None      
+        if "interactive_mode" not in kwargs:
+            kwargs["interactive_mode"]=False
+        if kwargs["interactive_mode"]==True:
+            if isinstance(simulation_values[0], dict) is False or len(simulation_values)>1:
+                raise ValueError("In interactive mode, you can only submit a single dictioanry of simulation values")
+            self.simulation_plots={"maxima":{}, "data_harmonics":{}}
         for i in range(0, len(self.grouping_keys)):
                 
                 groupkey=self.grouping_keys[i]
@@ -733,20 +866,19 @@ class ExperimentEvaluation:
                 all_data=[self.scale(self.classes[x]["data"], groupkey, x) for x in self.experiment_grouping[groupkey]]
                 all_times=[self.classes[x]["times"] for x in self.experiment_grouping[groupkey]]
                 label_list=[",".join(x.split("-")[1:]) for x in self.experiment_grouping[groupkey]]
-                all_simulations=[]
+                all_simulations=[x[groupkey] for x in simulation_values]
                 
                     
-                for p in parameter_list:
-                    simulation_vals=self.evaluate(p)
-                    all_simulations.append([self.scale(simulation_vals[x], groupkey, x) for x in self.experiment_grouping[groupkey]])
+                
                 if "type:ft" not in groupkey:
                     self.plot_stacked_time(ax, all_data, label_list=label_list)
                     for q in range(0, len(all_simulations)):
                         if kwargs["sim_plot_options"]=="simple":
-                            self.plot_stacked_time(ax, all_simulations[q], alpha=0.75, linestyle=linestyles[q%4], colour="black")
+                            axis, time_lines=self.plot_stacked_time(ax, all_simulations[q], alpha=0.75, linestyle=linestyles[q%4], colour="black")
                         else:
-                            
-                            self.plot_stacked_time(ax, all_simulations[q], alpha=0.75, linestyle=linestyles[q%4], colour=plot_colours[q], patheffects=path_effects, lw=kwargs["sim_plot_options"]["lw"])
+                            axis, time_lines=self.plot_stacked_time(ax, all_simulations[q], alpha=0.75, linestyle=linestyles[q%4], colour=plot_colours[q], patheffects=path_effects, lw=kwargs["sim_plot_options"]["lw"])
+                        if kwargs["interactive_mode"]==True:
+                            self.simulation_plots[groupkey]=time_lines
                 else:
                     num_experiments = len(all_data)
                     num_simulations = len(all_simulations) + 1  # +1 for the data
@@ -780,21 +912,26 @@ class ExperimentEvaluation:
                     line_styles = ["-"] + [linestyles[l % len(linestyles)] for l in range(0, len(all_simulations))]
                     if kwargs["sim_plot_options"]=="simple":
                         colors = [None] + ["black"] * len(all_simulations)#
-                        patheffects=[None]*len(all_simulations)+1
+                        patheffects=[None]*(len(all_simulations)+1)
                     else:
                         colors=[None]
                         patheffects=[None]
                         for r in range(0, len(plot_colours)):
                             colors+=[plot_colours[r]]
                             patheffects+=[path_effects]
-                    
-                    self.plot_stacked_harmonics(ax, plot_harmonics,
+                    dmax=np.max(np.array(data_harmonics), axis=None)        
+                    scaled_harmonics=self.process_harmonics(plot_harmonics, additional_maximum=dmax)
+                    axis, line_list=self.plot_scaled_harmonics(ax, scaled_harmonics,
                                                 alpha=alphas, 
                                                 linestyle=line_styles, 
                                                 colour=colors, 
                                                 label_list=label_list,
                                                 scale=True,
                                                 patheffects=patheffects)
+                    if kwargs["interactive_mode"]==True:
+                        self.simulation_plots[groupkey]=line_list#lines are stored columnwise per plot and rowise per harmonics
+                        self.simulation_plots["maxima"][groupkey]=dmax
+                        self.simulation_plots["data_harmonics"][groupkey]=data_harmonics
                 if kwargs["show_legend"]==True:
                     self.add_legend(ax, groupkey)
                 if kwargs["simulation_labels"] is not None:
@@ -810,16 +947,107 @@ class ExperimentEvaluation:
                             else:
                                 twinx.plot(xlim[0],ylim[0], color=plot_colours[r], linestyle=linestyles[r%4], path_effects=path_effects, label=kwargs["simulation_labels"][r])
                         twinx.legend(ncols=len(kwargs["simulation_labels"]), bbox_to_anchor=[0.5, -0.1], loc="center")
-                                                                            
+        fig=plt.gcf()                                                                  
         fig.set_size_inches(16, 10)
 
         plt.tight_layout()
         plt.subplots_adjust(hspace=0.3)
-        if kwargs["savename"] is not None:
-            fig.savefig(kwargs["savename"], dpi=500)
-            plt.close()
+        if kwargs["interactive_mode"]==False:
+            if kwargs["savename"] is not None:
+                fig.savefig(kwargs["savename"], dpi=500)
+                plt.close()
+            else:
+                plt.show()
+    def interactive_front_results(self, all_simulations, target_key, sim_address, score_address):
+        fig = plt.figure()
+        
+
+        if len(self.grouping_keys)%2!=0:
+            num_cols=int(len(self.grouping_keys)+1)/2
         else:
-            plt.show()
+            num_cols=int(len(self.grouping_keys)/2)
+        spec = fig.add_gridspec(2, num_cols+1)
+        axes=[[0 for x in range(0, num_cols)] for y in range(0, 2)]
+        for i in range(0, 2):
+            for j in range(0, num_cols):
+                axes[i][j]=fig.add_subplot(spec[i,j])
+        if len(self.grouping_keys)%2!=0:  
+            axes[1][-2].set_axis_off()
+        score_plt=fig.add_subplot(spec[0,-1])
+        axes=np.array(axes)
+        all_simulation_traces=[x["saved_simulations"] for x in all_simulations]
+        all_scores=[x["scores"] for x in all_simulations]
+        x_scores=np.array([x[target_key[0]] for x in all_scores])
+        x_idx=np.argsort(x_scores)
+        x_scores=x_scores[x_idx]
+        y_scores=np.array([x[target_key[1]] for x in all_scores])[x_idx]
+        score_plt.scatter(x_scores, y_scores, picker=True)
+        score_plt.set_xlabel(target_key[0])
+        score_plt.set_ylabel(target_key[1])
+        score_plt.set_xscale("log")
+        score_plt.set_yscale("log")
+        self.scat=score_plt.scatter(x_scores[0], y_scores[0], c="darkred", edgecolors="black")
+        
+        self.plot_dict={"traces":all_simulation_traces, "scores":[x_scores, y_scores], "indexes":x_idx}
+        
+        
+
+        self.results(all_simulation_traces[x_idx[0]], savename=None, pre_saved=True, target_key=target_key, sim_plot_options="simple", axes=axes, interactive_mode=True)
+        
+        self.interactive_fig=fig
+        def update_plots(event):
+            
+            new_idx=event.ind[0]
+            
+            idx=self.plot_dict["indexes"][new_idx]
+            get_data=self.plot_dict["traces"][idx]
+            grouped_data=self.process_simulation_dict([get_data], pre_saved=True)[0]
+            for i in range(0, len(self.grouping_keys)):
+                groupkey=self.grouping_keys[i]
+                if "ft" not in groupkey:
+                    for j in range(0, len(grouped_data[groupkey])):
+                        self.simulation_plots[groupkey][j].set_ydata(grouped_data[groupkey][j])
+                else:
+                    all_times=[self.classes[x]["times"] for x in self.experiment_grouping[groupkey]]
+                    
+                    sim_harmonics = np.array([
+                        np.abs(sci.plot.generate_harmonics(t, i, hanning=True, one_sided=True, harmonics=self.all_harmonics))
+                        for t, i in zip(all_times, [self.scale(get_data[x], groupkey, x) for x in self.experiment_grouping[groupkey]])
+                    ])
+                    plot_harmonics=np.array([self.simulation_plots["data_harmonics"][groupkey], sim_harmonics])
+                    scaled_harmonics=np.array(self.process_harmonics(plot_harmonics, additional_maximum=self.simulation_plots["maxima"][groupkey])["scaled_data"])
+                    existing_harmonic_plots=self.simulation_plots[groupkey]
+                    dimensions=scaled_harmonics.shape
+                    #print(dimensions)
+                    num_harms=dimensions[1]
+                    num_plots=dimensions[0]     
+                    biggest=0
+                    smallest=1e23
+                    for k in range(0, num_plots):#column
+                        for j in range(0, num_harms):#row (total_harmonic_plots)
+                        
+                            
+                            current_harmonic=scaled_harmonics[k, j, 1, 1, :]
+                            biggest=max(max(current_harmonic), biggest)
+                            smallest=min(min(current_harmonic), smallest)
+                            plotdx=(k*num_harms)+j
+                            #print(plotdx)
+                            self.simulation_plots[groupkey][plotdx][0].set_ydata(scaled_harmonics[k, j, 0, 1, :])
+                            self.simulation_plots[groupkey][plotdx][1].set_ydata(current_harmonic)
+                    #print(np.max(scaled_harmonics, axis=None))
+                    axes[i%2, i//2].set_ylim([0.95*smallest, 1.05*biggest])   
+                    #scaled data is returned as experiment -> harmonic -> plot
+                    #lines are stored columnwise per plot and rowise per harmonics
+            x=self.plot_dict["scores"][0][new_idx]
+            y=self.plot_dict["scores"][1][new_idx]
+            self.scat.set_offsets([x, y])
+            self.interactive_fig.canvas.draw_idle()
+        
+        self.interactive_fig.canvas.mpl_connect("pick_event", update_plots)
+
+
+
+        plt.show()
     def ax_results_extraction(self, dataloc, num_sets, saveloc, client_name="ax_client.npy"):
         results={key:[] for key in self.grouping_keys}
         linestart=len(r"Parameterization:</em><br>")

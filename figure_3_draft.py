@@ -30,7 +30,7 @@ boundaries={
 }
 xvals=[0.1, 0.11, 0.12]
 markers=["o","^", "X"]
-cmap = plt.get_cmap('viridis_r')
+cmap = plt.get_cmap('plasma')
 
 for i in range(0, len(all_titles)):
     current_list=all_titles[i]
@@ -142,9 +142,9 @@ for p in range(0, 1):
             
             Z=results_array*factor#np.log10(abs(results_array))
             if i==2:
-                CS=likelihood_ax[i].contourf(X*(255/185),Y,Z, 15,cmap=cm.viridis_r)
+                CS=likelihood_ax[i].contourf(X*(255/185),Y,Z, 15,cmap=cm.plasma)
             else:
-                CS=likelihood_ax[i].contourf(X,Y,Z, 15,cmap=cm.viridis_r)
+                CS=likelihood_ax[i].contourf(X,Y,Z, 15,cmap=cm.plasma)
             current_ytick=list(likelihood_ax[i].get_ylim())
             if i==0:
                 existing_ytick=current_ytick
