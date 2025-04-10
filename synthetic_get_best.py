@@ -19,6 +19,7 @@ from draft_master_class import ExperimentEvaluation
 
 loc="/home/henryll/Documents/Experimental_data/Nat/joint"
 loc="/users/hll537/Experimental_data/M4D2_joint"
+loc="synthetic_data/data_files"
 sw_freqs=[65, 75, 85, 100, 115, 125, 135, 145, 150, 175, 200, 300,  400, 500]
 experiments_dict={}
 dictionary_list=[
@@ -90,24 +91,44 @@ grouping_list=[
 evaluator.initialise_grouping(grouping_list)
 
 
-p_dict=np.load(os.path.join(sys.argv[3], "saved_parameters.npy"), allow_pickle=True).item()
-combo_keys=list(p_dict.keys())
-print([key for key in p_dict.keys()])
-num_points=int(sys.argv[2])
-current_key=int(float(sys.argv[1])//num_points)
-front_list=p_dict[combo_keys[current_key]]
+for m in range(0, 20):
+    all_front_points=evaluator.process_pareto_directories(os.path.join(sys.argv[1], "set_{0}".format(m)))
+    #should continue on negatives
+    if m==0:
+        saved_dict={key:[] for key in all_front_points.keys()}
+        scores={key:1e23 for key in evaluator.grouping_keys}   
+    bad_calc=False
+    for key in evaluator.grouping_keys:
+            print(key)
+            for combo_key in all_front_points.keys():                
+                print(combo_key)
+                for elem in all_front_points[combo_key]:
+                    point_len=len(all_front_points[combo_key])
+                    if bad_calc==False:
+                        
+                        
+                        recorded_score=elem["scores"][key]
+                        plist=[elem["parameters"][x] for x in evaluator.all_parameters]
+                        if recorded_score<scores[key]:
+                            saved_sims=evaluator.evaluate(plist)
+                            score_dict=evaluator.simple_score(saved_sims)
+                            #score_dict={ckey:np.random.rand()+0.3 for ckey in evaluator.grouping_keys}
+                            if score_dict[key]>(1.2*recorded_score):
+                                bad_calc=True
+                                break
+                            else:
+                                saved_dict[combo_key].append([{"parameters":elem["parameters"]} for elem in all_front_points[combo_key]])
+                                scores[key]=recorded_score
+                                break
 
-i=int(float(sys.argv[1])%num_points)
-for j in range(0, len(front_list)):
- plist=[front_list[j][i]["parameters"][x] for x in evaluator.all_parameters]
- saved_sims=evaluator.evaluate(plist)
- for key in saved_sims.keys():
-     if "ftacv" in key:
-         saved_sims[key]=scipy.decimate(saved_sims[key], 13)
- front_list[j][i]["saved_simulations"]=saved_sims
- front_list[j][i]["key"]=combo_keys[current_key]
- front_list[j][i]["scores"]=evaluator.simple_score(saved_sims)
- np.save(os.path.join(sys.argv[3], "individual_simulations/saved_simulations_{1}_{0}_{2}".format(i, current_key, j)), front_list[j][i])
+import pickle
+
+results = {"size": point_len, "keys":len(list(all_front_points.keys()))}
+
+# Write results to a file
+with open('job_results.pkl', 'wb') as f:
+    pickle.dump(results, f)
+np.save(os.path.join(sys.argv[1], "saved_parameters.npy"), saved_dict)
 
     
     
