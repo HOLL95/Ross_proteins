@@ -1,4 +1,4 @@
-from ax.plot.pareto_frontier import plot_pareto_frontier
+rom ax.plot.pareto_frontier import plot_pareto_frontier
 from ax.plot.pareto_utils import compute_posterior_pareto_frontier
 from ax.service.ax_client import AxClient
 from ax.service.utils.instantiation import ObjectiveProperties
@@ -91,25 +91,4 @@ evaluator.initialise_grouping(grouping_list)
 
 grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
 evaluator.initialise_simulation_parameters(grouped_params)
-
-save=False
-if save==True:
-    results=evaluator.ax_results_extraction(
-        dataloc="/home/henryll/Documents/Frontier_results/M4D2_inference_6",
-        num_sets=20,
-        saveloc="init_pareto_results/mc_points.npy",
-    )
-else:
-    results=np.load("init_pareto_results/mc_points.npy", allow_pickle=True).item()
-
-best_param=evaluator.sort_results(results)
-for key in list(best_param.keys()):
-    #print(evaluator.results_table(best_param[key]["params"]))
-    evaluator.results(best_param[key]["params"], target_key=key, savename=None, show_legend=True)
-
-
-    
-    
-                
-    
-   
+sim_values_dict=np.load("/home/henryll/Documents/Frontier_results/M4D2_inference_6/saved/simulation_values.npy", allow_pickle=True).item()

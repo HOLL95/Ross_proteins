@@ -92,21 +92,14 @@ evaluator.initialise_grouping(grouping_list)
 grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
 evaluator.initialise_simulation_parameters(grouped_params)
 
-save=False
-if save==True:
-    results=evaluator.ax_results_extraction(
-        dataloc="/home/henryll/Documents/Frontier_results/M4D2_inference_6",
-        num_sets=20,
-        saveloc="init_pareto_results/mc_points.npy",
-    )
-else:
-    results=np.load("init_pareto_results/mc_points.npy", allow_pickle=True).item()
+saved_sims=np.load("/home/henryll/Documents/Frontier_results/M4D2_inference_6/saved/simulation_values_b.npy", allow_pickle=True).item()
+for key in list(saved_sims.keys())[2:]:
+    target_keys=key.split("&")
+    
+    #evaluator.results([saved_sims[key][0]["saved_simulations"]], target_key=target_keys, savename=None, pre_saved=True, sim_plot_options="simple")
+    evaluator.interactive_front_results(saved_sims[key], target_key=target_keys, sim_address="saved_simulations", score_address="score")
 
-best_param=evaluator.sort_results(results)
-for key in list(best_param.keys()):
-    #print(evaluator.results_table(best_param[key]["params"]))
-    evaluator.results(best_param[key]["params"], target_key=key, savename=None, show_legend=True)
-
+        
 
     
     

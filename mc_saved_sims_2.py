@@ -58,7 +58,7 @@ for i in range(0, len(sw_freqs)):
 bounds={
         "E0":[-0.6, -0.1],
         "E0_mean":[-0.6, -0.1],
-        "E0_std":[1e-3, 0.08],
+        "E0_std":[1e-3, 0.085],
         "k0":[10, 500],
         "alpha":[0.4, 0.6],
         "Ru":[200, 400],
@@ -69,6 +69,7 @@ bounds={
         "CdlE3":[-1e-6, 1e-6],
         "alpha":[0.4, 0.6]
         }
+
 
 common= {
         "Temp":278,
@@ -91,22 +92,21 @@ evaluator.initialise_grouping(grouping_list)
 
 grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
 evaluator.initialise_simulation_parameters(grouped_params)
+saved_sims=np.load("/home/henryll/Documents/Frontier_results/M4D2_inference_7/simulation_values.npy", allow_pickle=True).item()
 
-save=False
-if save==True:
-    results=evaluator.ax_results_extraction(
-        dataloc="/home/henryll/Documents/Frontier_results/M4D2_inference_6",
-        num_sets=20,
-        saveloc="init_pareto_results/mc_points.npy",
-    )
-else:
-    results=np.load("init_pareto_results/mc_points.npy", allow_pickle=True).item()
+keys=list(saved_sims.keys())
+for key in keys[0:]:
+    
+    for iteration_key in saved_sims[key]:
+        score_key=saved_sims[key][iteration_key][0]["key"]
+        target_keys=score_key.split("&")
+        front=saved_sims[key][iteration_key]
+        del saved_sims
+        #evaluator.results([saved_sims[key][0]["saved_simulations"]], target_key=target_keys, savename=None, pre_saved=True, sim_plot_options="simple")
+        evaluator.interactive_front_results(front, target_key=target_keys, sim_address="saved_simulations", score_address="scores")
+        saved_sims=np.load("/home/henryll/Documents/Frontier_results/M4D2_inference_7/simulation_values.npy", allow_pickle=True).item()
 
-best_param=evaluator.sort_results(results)
-for key in list(best_param.keys()):
-    #print(evaluator.results_table(best_param[key]["params"]))
-    evaluator.results(best_param[key]["params"], target_key=key, savename=None, show_legend=True)
-
+        
 
     
     

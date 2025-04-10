@@ -78,6 +78,7 @@ likelihood_ax[0][0].text(1.1, 1.15, all_titles[-1],
 
 locs=[loc, os.path.join(loc, "Blanks")]
 colors=["#2db27d","darkgrey" ]
+colors=["#8606a6", "darkgrey"]
 labels=["Experimental", "PGE"]
 gs=[1,0]
 
@@ -169,9 +170,9 @@ for i in range(0,len(freqs)):
             sw_class.optim_list=["E0_mean","E0_std","k0","gamma","Cdl", "alpha"]+extra_keys
             sim=1e6*sw_class.dim_i(sw_class.Dimensionalsimulate(best_fit[:-1], times))
             if j==0:                  
-                ax.plot(pot, sim[1:-2], color="#46327e", label="Simulation", )
+                ax.plot(pot, sim[1:-2], color="#f0f921", label="Simulation", )#"#46327e"
             else:
-                 ax.plot(pot, sim[1:-2], color="#46327e")
+                 ax.plot(pot, sim[1:-2], color="#f0f921")
        
         for m in range(0, len(likelihood_params)):
             
@@ -208,16 +209,16 @@ for i in range(0,len(freqs)):
             results_array=results_array.T
             X, Y = np.meshgrid(X_vals, Y_vals)
             Z=results_array*factor
-            CS=ax.contourf(X,Y,Z, 15,cmap=cm.viridis_r)
+            CS=ax.contourf(X,Y,Z, 15,cmap=cm.plasma)
             ax.set_yscale("log")
             if param1 =="gamma":
                     #ax.set_xscale("log")
                     ax.xaxis.set_major_locator(ticker.LogLocator(subs="all"))
-                    ax.scatter(best_fit[3], best_fit[2], s=10, marker="x", color="white")
+                    ax.scatter(best_fit[3], best_fit[2], s=10, marker="x", color="black")
 
             else:
                 
-                ax.scatter(best_fit[0], best_fit[2], s=10, marker="x", color="white")
+                ax.scatter(best_fit[0], best_fit[2], s=10, marker="x", color="black")
           
             
             if (i*2)+j==2:    

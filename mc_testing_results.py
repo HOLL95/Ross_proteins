@@ -92,7 +92,7 @@ evaluator.apply_offset(["E0_mean_2"],["anodic"])
 #evaluator.check_grouping(show_legend=True)
 save=False
 if save==True:
-    results=ax_results_extraction(
+    results=evaluator.ax_results_extraction(
         dataloc="/home/henryll/Documents/Frontier_results/M4D2_inference_2",
         num_sets=11,
         saveloc="init_pareto_results/mc_points.npy",
