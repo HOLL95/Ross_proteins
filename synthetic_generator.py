@@ -18,7 +18,7 @@ import sys
 from draft_master_class import ExperimentEvaluation
 import tabulate
 loc="/home/henryll/Documents/Experimental_data/Nat/joint"
-#loc="/users/hll537/Experimental_data/M4D2_joint"
+loc="/users/hll537/Experimental_data/M4D2_joint"
 
 sw_freqs=[65, 75, 85, 100, 115, 125, 135, 145, 150, 175, 200, 300,  400, 500]
 experiments_dict={}
