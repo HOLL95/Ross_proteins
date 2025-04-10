@@ -9,14 +9,14 @@ import math
 import matplotlib.pyplot as plt
 import copy
 from scipy.interpolate import CubicSpline
-
+from scipy.signal import decimate
 import os
 from ax.utils.notebook.plotting import init_notebook_plotting, render
 from pathlib import Path
 from submitit import AutoExecutor
 import sys
 from draft_master_class import ExperimentEvaluation
-run=int(sys.argv[1])
+
 loc="/home/henryll/Documents/Experimental_data/Nat/joint"
 loc="/users/hll537/Experimental_data/M4D2_joint"
 
@@ -69,6 +69,7 @@ bounds={
         "CdlE3":[-1e-6, 1e-6],
         "alpha":[0.4, 0.6]
         }
+
 common= {
         "Temp":278,
         "area":0.036,
@@ -90,97 +91,48 @@ evaluator.initialise_grouping(grouping_list)
 
 grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
 evaluator.initialise_simulation_parameters(grouped_params)
-#
-thresholds=evaluator.get_zero_point_scores()
-print(evaluator.all_parameters)
-print(evaluator.parse_input([0.5 for x in evaluator.all_parameters]))
-#evaluator.check_grouping()
-#evaluator.results([0.5 for x in evaluator.all_parameters], target_key=evaluator.grouping_keys[0])
-ax_client = AxClient()
-param_arg=[
-        {
-            "name": x,
-            "type": "range",
-            "value_type":"float",
-            "bounds": [0.0, 1.0],
-        }
-        if "offset" not in x else 
-        
-        {
-            "name": x,
-            "type": "range",
-            "value_type":"float",
-            "bounds": [0.0, 0.2],
-        }
-        
-         for x in evaluator.all_parameters 
-    ]
 
-objectives={key:ObjectiveProperties(minimize=True, threshold=thresholds[key]) for key in evaluator.grouping_keys}
+for m in range(0, 20):
+    all_front_points=evaluator.process_pareto_directories(os.path.join(sys.argv[1], "set_{0}".format(m)))
+    #should continue on negatives
+    if m==0:
+        saved_dict={key:[] for key in all_front_points.keys()}
+        scores={key:1e23 for key in evaluator.grouping_keys}   
+    bad_calc=False
+    for key in evaluator.grouping_keys:
+            print(key)
+            for combo_key in all_front_points.keys():                
+                print(combo_key)
+                for elem in all_front_points[combo_key]:
+                    point_len=len(all_front_points[combo_key])
+                    if bad_calc==False:
+                        
+                        
+                        recorded_score=elem["scores"][key]
+                        plist=[elem["parameters"][x] for x in evaluator.all_parameters]
+                        if recorded_score<scores[key]:
+                            saved_sims=evaluator.evaluate(plist)
+                            score_dict=evaluator.simple_score(saved_sims)
+                            #score_dict={ckey:np.random.rand()+0.3 for ckey in evaluator.grouping_keys}
+                            if score_dict[key]>(1.2*recorded_score):
+                                bad_calc=True
+                                break
+                            else:
+                                saved_dict[combo_key].append([{"parameters":elem["parameters"]} for elem in all_front_points[combo_key]])
+                                scores[key]=recorded_score
+                                break
 
-ax_client.create_experiment(
-    name="Multi_experiment",
-    parameters=param_arg,
-    objectives=objectives,
-    overwrite_existing_experiment=False,
-    is_test=True,
+import pickle
 
-)
-paralell=ax_client.get_max_parallelism()
-non_para_iterations=paralell[0][0]
-directory=os.getcwd()
-directory="/mnt/scratch/users/hll537"
-executor = AutoExecutor(folder=os.path.join(directory, "tmp_tests")) 
-executor.update_parameters(timeout_min=60) # Timeout of the slurm job. Not including slurm scheduling delay.
+results = {"size": point_len, "keys":len(list(all_front_points.keys()))}
 
-executor.update_parameters(cpus_per_task=2)
-executor.update_parameters(slurm_partition="nodes")
-executor.update_parameters(slurm_job_name="mo_test")
-executor.update_parameters(slurm_account="chem-electro-2024")
-executor.update_parameters(mem_gb=2)
-objectives = ax_client.experiment.optimization_config.objective.objectives
-all_metrics=[objectives[x].metric for x in range(0, len(objectives))]
-all_keys=[vars(x)["_name"] for x in all_metrics]
-metric_dict=dict(zip(all_keys, all_metrics))
-combinations=list(itertools.combinations(all_keys, 2))
-print(combinations)
-def save_current_front(input_dictionary):
-    
-    
-    metrics=input_dictionary["metrics"]
+# Write results to a file
+with open('job_results.pkl', 'wb') as f:
+    pickle.dump(results, f)
+np.save(os.path.join(sys.argv[1], "saved_parameters.npy"), saved_dict)
 
     
-    obj1=input_dictionary["combinations"][0]
-    obj2=input_dictionary["combinations"][1]
-    frontier = compute_posterior_pareto_frontier(
-        experiment=input_dictionary["experiment"],
-        #data=ax_client.experiment.fetch_data(),
-        primary_objective=metrics[obj1],
-        secondary_objective=metrics[obj2],
-        absolute_metrics=[obj1, obj2],
-        num_points=50,
-    )
-
-    np.save("frontier_results/set_{2}/fronts/{0}_{1}".format(obj1, obj2, input_dictionary["run"]), {"frontier":frontier})
-Path(os.path.join(directory, "frontier_results","set_{0}".format(run), "fronts")).mkdir(parents=True, exist_ok=True)
     
-for i in range(130):
-    parameters, trial_index = ax_client.get_next_trial()
-    # Local evaluation here can be replaced with deployment to external system.
+                
+    
    
-    ax_client.complete_trial(trial_index=trial_index, raw_data=evaluator.optimise_simple_score(parameters))
-    
-
-    #print("pre_saving")
-    np.save("frontier_results/set_{1}/ax_client.npy".format(i, run), {"saved_frontier":ax_client})
-    if i>non_para_iterations:
-        #Path(os.path.join(directory, "frontier_results","set_{0}".format(run), "iteration_{0}".format(i))).mkdir(parents=True, exist_ok=True)
-        with executor.batch():
-            for j in range(0, len(combinations)):
-                save_dict={}
-                save_dict["metrics"]=metric_dict
-                save_dict["combinations"]=combinations[j]
-                save_dict["experiment"]=ax_client.experiment
-                save_dict["run"]=run
-                save_dict["iteration"]=i
-                executor.submit(save_current_front, save_dict)
