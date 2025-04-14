@@ -93,7 +93,7 @@ grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
 evaluator.initialise_simulation_parameters(grouped_params)
 
 
-for m in range(0, 20):
+for m in range(0, 0):
     all_front_points=evaluator.process_pareto_directories(os.path.join(sys.argv[1], "set_{0}".format(m)))
     #should continue on negatives
     if m==0:
@@ -144,10 +144,11 @@ else:
 
 
 best_param=evaluator.sort_results(results)
-for key in list(best_param.keys()):
+for key in list(best_param.keys())[2:]:
     #print(evaluator.results_table(best_param[key]["params"]))
-    evaluator.results(best_param[key]["params"], target_key=key, savename=None, show_legend=True)
+    #evaluator.results(best_param[key]["params"], target_key=key, savename=None, show_legend=True)
 
+    print(evaluator.optimise_simple_score(best_param[key]["params"]))
 
     
     

@@ -16,10 +16,11 @@ from pathlib import Path
 from submitit import AutoExecutor
 import sys
 from draft_master_class import ExperimentEvaluation
-
+import tabulate
 loc="/home/henryll/Documents/Experimental_data/Nat/joint"
 #loc="/users/hll537/Experimental_data/M4D2_joint"
-
+loc="synthetic_data/data_files"
+loc="/home/henryll/Documents/Frontier_results/Synthetic_studies/data/data_files"
 sw_freqs=[65, 75, 85, 100, 115, 125, 135, 145, 150, 175, 200, 300,  400, 500]
 experiments_dict={}
 dictionary_list=[
@@ -33,8 +34,8 @@ FT_options=dict(Fourier_fitting=True,
                 Fourier_function="abs",
                 Fourier_harmonics=list(range(3, 10)), 
                 dispersion_bins=[30],
-                optim_list=["E0_mean","E0_std","k0","gamma","Ru", "Cdl","CdlE1","CdlE2","CdlE3","alpha"])
-zero_ft=[-0.425, 0.1, 100, 8e-11,100, 1.8e-4,  1e-5, 1e-5, -1e-6,0.5]
+                optim_list=["E0","k0","gamma","Ru", "Cdl","CdlE1","CdlE2","CdlE3","alpha"])
+zero_ft=[-0.425, 100, 8e-11,100, 1.8e-4,  1e-5, 1e-5, -1e-6,0.5]
 zero_sw={"potential_window":[-0.425-0.15, -0.425+0.15], "thinning":10, "smoothing":20}
 labels=["3_Hz", "9_Hz", "15_Hz"]
 for i in range(0, len(labels)):
@@ -42,7 +43,7 @@ for i in range(0, len(labels)):
 
 directions=["anodic","cathodic"]
 directions_dict={"anodic":{"v":1, "E_start":-0.8},"cathodic":{"v":-1, "E_start":0}}
-sw_options=dict(square_wave_return="net", dispersion_bins=[30], optim_list=["E0_mean","E0_std","k0","gamma","alpha"])
+sw_options=dict(square_wave_return="net", dispersion_bins=[30], optim_list=["E0","k0","gamma","alpha"])
 for i in range(0, len(sw_freqs)):
     
     for j in range(0, len(directions)):
@@ -53,22 +54,23 @@ for i in range(0, len(sw_freqs)):
         "sampling_factor":200,
         "E_start":directions_dict[directions[j]]["E_start"],
         "v":directions_dict[directions[j]]["v"]}
-        experiments_dict=sci.construct_experimental_dictionary(experiments_dict, {**{"Parameters":params}, **{"Options":sw_options}, "Zero_params":zero_sw}, "SWV","{0}_Hz".format(sw_freqs[i]), directions[j])
+        experiments_dict=sci.construct_experimental_dictionary(experiments_dict, {**{"Parameters":params}, **{"Options":sw_options}, "Zero_params":None}, "SWV","{0}_Hz".format(sw_freqs[i]), directions[j])
 
 bounds={
         "E0":[-0.6, -0.1],
         "E0_mean":[-0.6, -0.1],
-        "E0_std":[1e-3, 0.08],
-        "k0":[10, 500],
+        "E0_std":[1e-3, 0.085],
+        "k0":[50, 500],
         "alpha":[0.4, 0.6],
         "Ru":[200, 400],
         "gamma":[1e-11, 1e-9],
         "Cdl":[0,1e-3],
-        "CdlE1":[-5e-5, 5e-5],
-        "CdlE2":[-1e-5, 1e-5],
-        "CdlE3":[-1e-6, 1e-6],
+        "CdlE1":[-5e-3, 5e-3],
+        "CdlE2":[-1e-4, 1e-4],
+        "CdlE3":[-1e-5, 1e-5],
         "alpha":[0.4, 0.6]
         }
+
 
 common= {
         "Temp":278,
@@ -88,21 +90,17 @@ grouping_list=[
 
 
 evaluator.initialise_grouping(grouping_list)
-
-grouped_params={x:[range(0, 4), range(4, 6)] for x in ["E0_std","gamma"]}
-evaluator.initialise_simulation_parameters(grouped_params)
-
-saved_sims=np.load("/home/henryll/Documents/Frontier_results/M4D2_inference_6/saved/simulation_values_b.npy", allow_pickle=True).item()
-for key in list(saved_sims.keys())[3:]:
-    target_keys=key.split("&")
+evaluator.initialise_simulation_parameters()
+saved_sims=np.load("/home/henryll/Documents/Frontier_results/Synthetic_studies/individual_simulations/simulation_values.npy", allow_pickle=True).item()
+keys=list(saved_sims.keys())
+print(len(keys))
+for key in keys:
     
-    #evaluator.results([saved_sims[key][0]["saved_simulations"]], target_key=target_keys, savename=None, pre_saved=True, sim_plot_options="simple")
-    evaluator.interactive_front_results(saved_sims[key], target_key=target_keys, sim_address="saved_simulations", score_address="score")
-
-        
-
-    
-    
-                
-    
-   
+    for iteration_key in list(saved_sims[key].keys())[:1]:
+        score_key=saved_sims[key][iteration_key][0]["key"]
+        target_keys=score_key.split("&")
+        front=saved_sims[key][iteration_key]
+        del saved_sims
+        #evaluator.results([saved_sims[key][0]["saved_simulations"]], target_key=target_keys, savename=None, pre_saved=True, sim_plot_options="simple")
+        evaluator.interactive_front_results(front, target_key=target_keys, sim_address="saved_simulations", score_address="scores")
+        saved_sims=np.load("/home/henryll/Documents/Frontier_results/Synthetic_studies/individual_simulations/simulation_values.npy", allow_pickle=True).item()

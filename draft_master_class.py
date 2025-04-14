@@ -126,7 +126,7 @@ class ExperimentEvaluation:
             
             # Create experiment class
             self.classes[experiment_key] = {
-                "class": sci.RunSingleExperimentMCMC(
+                "class": sci.ParallelSimulator(
                     init_exp,
                     experiment_params,
                     problem="inverse",
@@ -230,7 +230,7 @@ class ExperimentEvaluation:
         self.classes[experiment_key]["FT"] = cls.experiment_top_hat(norm_time, norm_current)
         
         # Generate zero point for error calculation
-        dummy_zero_class = sci.RunSingleExperimentMCMC(
+        dummy_zero_class = sci.SingleExperiment(
             "FTACV",
             cls._internal_memory["input_parameters"],
             problem="forwards",
@@ -508,6 +508,7 @@ class ExperimentEvaluation:
             current_score=0
             for classkey in self.experiment_grouping[groupkey]:
                 cls=self.classes[classkey]["class"]
+                
                 if "type:ft" not in groupkey:
                     classscore=sci._utils.RMSE(simulation_values_dict[classkey], self.classes[classkey]["data"])
                 else:
@@ -832,7 +833,7 @@ class ExperimentEvaluation:
             }
         if "sim_plot_options" not in kwargs:
             kwargs["sim_plot_options"]="simple"
-        elif kwargs["sim_plot_options"]=="default":
+        elif kwargs["sim_plot_options"]=="default" or kwargs["sim_plot_options"]=="simple":
             pass
         else:
             for key in defaults.keys():
@@ -975,6 +976,7 @@ class ExperimentEvaluation:
             axes[1][-2].set_axis_off()
         score_plt=fig.add_subplot(spec[0,-1])
         axes=np.array(axes)
+        
         all_simulation_traces=[x["saved_simulations"] for x in all_simulations]
         all_scores=[x["scores"] for x in all_simulations]
         x_scores=np.array([x[target_key[0]] for x in all_scores])

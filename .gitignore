@@ -20,3 +20,5 @@ tmp_tests
 fitcheck
 synthetic_data
 pareto_optimal_tests
+*.json
+
