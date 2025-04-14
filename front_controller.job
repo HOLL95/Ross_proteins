@@ -15,10 +15,10 @@ set -e
 module load rclone
 OUTPUT_DIR="/users/hll537/Ross_proteins/frontier_results" 
 SIMULATION_DIR="/users/hll537/Ross_proteins/frontier_results/individual_simulations/"
-FIRST_JOB_ID=$(sbatch --array=0-20 --export=ALL,OUTPUT_DIR=$OUTPUT_DIR synthetic_submission_2.job | awk '{print $4}')
-PROCESS_JOB_ID=$(sbatch --export=ALL,OUTPUT_DIR=$OUTPUT_DIR --dependency=afterok:$FIRST_JOB_ID synthetic_get_best.job | awk '{print $4}')
+#FIRST_JOB_ID=$(sbatch --array=0-20 --export=ALL,OUTPUT_DIR=$OUTPUT_DIR synthetic_submission_2.job | awk '{print $4}')
+#PROCESS_JOB_ID=$(sbatch --export=ALL,OUTPUT_DIR=$OUTPUT_DIR --dependency=afterok:$FIRST_JOB_ID synthetic_get_best.job | awk '{print $4}')
 
-#PROCESS_JOB_ID=$(sbatch --export=ALL,OUTPUT_DIR=$OUTPUT_DIR ax_get_best.job | awk '{print $4}')
+PROCESS_JOB_ID=$(sbatch --export=ALL,OUTPUT_DIR=$OUTPUT_DIR synthetic_get_best.job | awk '{print $4}')
 FRONTPOINTS=$(python -c "import pickle; f=open('job_results.pkl','rb'); data=pickle.load(f); print(data['size'])")
 KEYPOINTS=$(python -c "import pickle; f=open('job_results.pkl','rb'); data=pickle.load(f); print(data['keys'])")
 TOTAL_JOBS=$(( FRONTPOINTS * KEYPOINTS -1))
@@ -28,6 +28,5 @@ ARRAY_RANGE="0-$TOTAL_JOBS"
 
 SIMULATION_JOB_ID=$(sbatch --dependency=afterok:$PROCESS_JOB_ID --array=$ARRAY_RANGE --export=ALL,OUTPUT_DIR=$OUTPUT_DIR synthetic_final_simulation.job | awk '{print $4}')
 #SIMULATION_JOB_ID=$(sbatch --array=$ARRAY_RANGE --export=ALL,OUTPUT_DIR=$OUTPUT_DIR ax_final_simulation.job | awk '{print $4}')
-python final_results_collater.py $SIMULATION_DIR "saved_simulations_"
-rclone copy frontier_results gdrive:Synthetic_studies
-rclone copy synthetic_data gdrive:Synthetic_studies/data
+sbatch --dependency=afterok:$SIMULATION_JOB_ID --array=$ARRAY_RANGE --export=ALL,SIMULATION_DIR=$SIMULATION_DIR final_process.job
+

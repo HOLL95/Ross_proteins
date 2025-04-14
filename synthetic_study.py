@@ -125,6 +125,7 @@ ax_client.create_experiment(
 )
 paralell=ax_client.get_max_parallelism()
 non_para_iterations=paralell[0][0]
+non_para_iterations=90
 directory=os.getcwd()
 executor = AutoExecutor(folder=os.path.join(directory, "tmp_tests")) 
 executor.update_parameters(timeout_min=60) # Timeout of the slurm job. Not including slurm scheduling delay.

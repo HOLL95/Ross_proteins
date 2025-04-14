@@ -447,7 +447,7 @@ class ExperimentEvaluation:
             if hasattr(self, "parameter_map"):
                 parameter_list=self.parameter_map[group_key]
             else:
-                raise ValueError("Need to run `initialise_grouping()` function first")
+                raise ValueError("Need to run `initialise_simulation_parameters()` function first")
             sim_values={}
             for classkey in self.experiment_grouping[group_key]:
                 cls=self.classes[classkey]["class"]

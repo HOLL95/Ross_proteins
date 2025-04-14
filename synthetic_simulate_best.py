@@ -89,7 +89,7 @@ grouping_list=[
 
 
 evaluator.initialise_grouping(grouping_list)
-
+evaluator.initialise_simulation_parameters()
 
 p_dict=np.load(os.path.join(sys.argv[3], "saved_parameters.npy"), allow_pickle=True).item()
 combo_keys=list(p_dict.keys())

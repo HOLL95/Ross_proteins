@@ -89,7 +89,7 @@ grouping_list=[
 
 
 evaluator.initialise_grouping(grouping_list)
-evaluator.initialise_simulation_parameters()
+
 
 for m in range(0, 20):
     all_front_points=evaluator.process_pareto_directories(os.path.join(sys.argv[1], "set_{0}".format(m)))
@@ -122,11 +122,10 @@ for m in range(0, 20):
                                 break
                 if bad_calc==False:
                  axloc=os.path.join(sys.argv[1], "set_{0}".format(m))
-                 #values=np.load(os.path.join(axloc, "ax_client.npy"), allow_pickle=True).item()["saved_frontier"]
-                 print("searching")
-                 #vdict=values.get_pareto_optimal_parameters(use_model_predictions=True)
+                 values=np.load(os.path.join(axloc, "ax_client.npy"), allow_pickle=True).item()["saved_frontier"]
+                 vdict=values.get_pareto_optimal_parameters(use_model_predictions=True)
             
-                 #np.save(os.path.join(axloc, "optimal_parameters"), vdict)
+                 np.save(os.path.join(axloc, "optimal_parameters"), vdict)
 import pickle
 
 results = {"size": point_len, "keys":len(list(all_front_points.keys()))}
