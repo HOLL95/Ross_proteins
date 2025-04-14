@@ -7,7 +7,7 @@ file_handle=sys.argv[2]
 files=os.listdir(file_loc)
 for file in files:
     if file_handle in file:
-        #print(file)        
+        print(file)        
         dictionary=np.load(os.path.join(file_loc, file), allow_pickle=True).item()
         front_idx=file.split("_")[-1]
         if dictionary["key"] not in final_save_dict:
